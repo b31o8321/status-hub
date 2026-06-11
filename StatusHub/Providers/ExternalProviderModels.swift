@@ -58,6 +58,8 @@ struct ExternalProviderItem: Codable, Identifiable, Equatable {
     let subtitle: String?
     let status: HubStatus?
     let url: String?
+    let value: String?
+    let detail: [String: String]?
 }
 
 struct ExternalProviderRuntime: Identifiable, Equatable {

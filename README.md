@@ -37,12 +37,22 @@ installer, provider process manager, and status renderer.
 The menu bar popover opens on the **总览** tab by default:
 
 - 总览: overall hub status and provider summaries.
-- 插件: installed providers and GitHub plugin installation.
+- 插件: marketplace, installed providers, and GitHub plugin installation.
 
 The settings window is also hub-oriented:
 
 - 总览: current hub status and local data directories.
 - 插件: install or inspect GitHub provider plugins.
+
+## Marketplace
+
+The built-in marketplace only lists general-purpose plugins. Custom plugins such
+as team-specific GitLab monitors or Intelli automation providers should be
+installed through the GitHub tab instead of being fixed marketplace entries.
+
+Current marketplace plugins:
+
+- Mac System: CPU, memory, network, battery, disk, and temperature status.
 
 Provider contract:
 
@@ -143,7 +153,11 @@ Status file example:
       "title": "每日任务",
       "subtitle": "等待人工确认",
       "status": "attention",
-      "url": "https://example.com/artifacts/daily-job"
+      "url": "https://example.com/artifacts/daily-job",
+      "value": "2",
+      "detail": {
+        "owner": "team"
+      }
     }
   ]
 }

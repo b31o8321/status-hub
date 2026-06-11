@@ -44,7 +44,11 @@ final class ExternalProviderModelsTests: XCTestCase {
               "title": "Temperature",
               "subtitle": "CPU 91 C",
               "status": "attention",
-              "url": "https://example.com/temperature"
+              "url": "https://example.com/temperature",
+              "value": "91 C",
+              "detail": {
+                "source": "powermetrics"
+              }
             }
           ]
         }
@@ -58,6 +62,8 @@ final class ExternalProviderModelsTests: XCTestCase {
         XCTAssertEqual(snapshot.summary, "1 item needs attention")
         XCTAssertEqual(snapshot.items.first?.id, "temperature")
         XCTAssertEqual(snapshot.items.first?.status, .attention)
+        XCTAssertEqual(snapshot.items.first?.value, "91 C")
+        XCTAssertEqual(snapshot.items.first?.detail?["source"], "powermetrics")
     }
 
     func testHubStatusSeverityOrdering() {
@@ -67,4 +73,3 @@ final class ExternalProviderModelsTests: XCTestCase {
         XCTAssertTrue(HubStatus.success > .idle)
     }
 }
-
