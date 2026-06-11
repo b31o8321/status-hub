@@ -422,18 +422,16 @@ private struct ProviderItemCard: View {
                         .font(.caption)
                         .foregroundColor((item.status ?? .unknown).color)
                 }
-            }
-            if let links = item.links, !links.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(links.prefix(maxProviderItemLinks)) { link in
-                        Link(destination: URL(string: link.url) ?? URL(fileURLWithPath: link.url)) {
-                            Label("最新文档：\(link.title)", systemImage: "doc.text")
-                                .font(.caption)
-                                .lineLimit(1)
-                        }
+                if let urlString = item.url, let url = URL(string: urlString) {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Image(systemName: "arrow.up.right")
+                            .frame(width: 16, height: 16)
                     }
+                    .buttonStyle(.plain)
+                    .help("打开")
                 }
-                .padding(.top, 2)
             }
             if let subtitle = item.subtitle, !subtitle.isEmpty {
                 Text(subtitle)
@@ -441,11 +439,39 @@ private struct ProviderItemCard: View {
                     .foregroundColor(.secondary)
                     .lineLimit(2)
             }
+            if let progress = progressValue {
+                VStack(alignment: .leading, spacing: 3) {
+                    ProgressView(value: progress)
+                        .progressViewStyle(.linear)
+                        .tint(progress >= 1 ? .orange : .blue)
+                    if let progressText = item.detail?["progressText"], !progressText.isEmpty {
+                        Text(progressText)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } else if let progressText = item.detail?["progressText"], !progressText.isEmpty {
+                Text(progressText)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
             if let detail = item.detail, !displayDetails(detail).isEmpty {
                 Text(detailSummary(detail))
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
+            }
+            if let links = item.links, !links.isEmpty {
+                HStack(spacing: 10) {
+                    ForEach(links.prefix(maxProviderItemLinks)) { link in
+                        Link(destination: URL(string: link.url) ?? URL(fileURLWithPath: link.url)) {
+                            Label(link.title, systemImage: "arrow.up.right.square")
+                                .font(.caption)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+                .padding(.top, 2)
             }
             if let logPath = item.detail?["logPath"], !logPath.isEmpty {
                 Button {
@@ -459,6 +485,12 @@ private struct ProviderItemCard: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private var progressValue: Double? {
+        guard let raw = item.detail?["progressPercent"],
+              let value = Double(raw) else { return nil }
+        return min(max(value, 0), 1)
     }
 
     private func detailSummary(_ detail: [String: String]) -> String {
@@ -481,8 +513,18 @@ private struct ProviderItemCard: View {
     }
 
     private func displayDetails(_ detail: [String: String]) -> [(title: String, value: String)] {
-        let orderedKeys = ["nextRunText", "lastRunText", "finishedText"]
+        let orderedKeys = [
+            "updatedText",
+            "branch",
+            "pipeline",
+            "nextRunText",
+            "lastRunText",
+            "finishedText"
+        ]
         let labels = [
+            "updatedText": "更新",
+            "branch": "分支",
+            "pipeline": "Pipeline",
             "nextRunText": "下次执行",
             "lastRunText": "最近运行",
             "finishedText": "完成时间"

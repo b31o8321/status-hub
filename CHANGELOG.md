@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.15
+
+- Replace document-specific link labels with generic provider links.
+- Add direct open buttons and progress bars for provider detail items.
+
 ## 0.1.14
 
 - Make plugin updates recover from dirty plugin worktrees.

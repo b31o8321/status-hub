@@ -50,7 +50,7 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.14` / build `15`.
+Current app version: `0.1.15` / build `16`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
@@ -78,6 +78,8 @@ settings such as GitLab project and branch selection can use a provider UI
 instead of JSON text fields.
 `0.1.14` makes GitHub plugin updates recover from dirty plugin worktrees while
 preserving provider `runtime/` data.
+`0.1.15` improves provider detail rendering with generic links, direct open
+buttons, and progress bars for running provider items.
 
 ## UI
 
