@@ -424,7 +424,17 @@ private struct ProviderItemCard: View {
                 Text(detailSummary(detail))
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                    .lineLimit(3)
+                    .lineLimit(2)
+            }
+            if let logPath = item.detail?["logPath"], !logPath.isEmpty {
+                Button {
+                    openLogDirectory(logPath)
+                } label: {
+                    Label("打开日志目录", systemImage: "folder")
+                        .font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 1)
             }
         }
         .padding(.vertical, 4)
@@ -437,16 +447,26 @@ private struct ProviderItemCard: View {
     }
 
     private func displayDetails(_ detail: [String: String]) -> [(title: String, value: String)] {
-        let orderedKeys = ["nextRunText", "lastRunText", "finishedText", "logPath"]
+        let orderedKeys = ["nextRunText", "lastRunText", "finishedText"]
         let labels = [
             "nextRunText": "下次执行",
             "lastRunText": "最近运行",
-            "finishedText": "完成时间",
-            "logPath": "日志"
+            "finishedText": "完成时间"
         ]
         return orderedKeys.compactMap { key in
             guard let value = detail[key], !value.isEmpty else { return nil }
             return (labels[key] ?? key, value)
         }
+    }
+
+    private func openLogDirectory(_ logPath: String) {
+        let expandedPath: String
+        if logPath.hasPrefix("~/") {
+            expandedPath = FileManager.default.homeDirectoryForCurrentUser.path + String(logPath.dropFirst())
+        } else {
+            expandedPath = logPath
+        }
+        let fileURL = URL(fileURLWithPath: expandedPath)
+        NSWorkspace.shared.activateFileViewerSelecting([fileURL])
     }
 }

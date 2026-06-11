@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.8
+
+- Replace long inline log paths in job cards with an "打开日志目录" Finder shortcut.
+
 ## 0.1.7
 
 - Preserve provider `runtime/` data, including local configuration, while installing or updating GitHub plugins.
