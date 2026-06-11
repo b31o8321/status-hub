@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.13
+
+- Add provider-owned external configuration helpers for complex settings flows.
+- Render `externalConfig` fields as action buttons instead of editable JSON.
+
 ## 0.1.12
 
 - Add GitHub Actions DMG packaging with unsigned-app install instructions.

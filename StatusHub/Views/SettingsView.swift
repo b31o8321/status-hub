@@ -327,9 +327,12 @@ private struct ProviderConfigurationView: View {
                         ForEach(section.fields) { field in
                             ConfigurationFieldRow(
                                 field: field,
+                                provider: provider,
+                                store: store,
                                 value: Binding(
                                     get: { values[field.key] ?? field.defaultValue ?? "" },
                                     set: { newValue in
+                                        guard field.type != "externalConfig" else { return }
                                         values[field.key] = newValue
                                         store.saveConfigurationValue(newValue, field: field, provider: provider)
                                     }
@@ -352,6 +355,8 @@ private struct ProviderConfigurationView: View {
 
 private struct ConfigurationFieldRow: View {
     let field: ExternalProviderConfigField
+    let provider: ExternalProviderRuntime
+    @ObservedObject var store: ExternalProviderStore
     @Binding var value: String
 
     var body: some View {
@@ -374,6 +379,17 @@ private struct ConfigurationFieldRow: View {
     @ViewBuilder
     private var editor: some View {
         switch field.type {
+        case "externalConfig":
+            Button {
+                store.runConfigurationAction(field, provider: provider)
+            } label: {
+                if store.isConfigurationActionRunning(provider: provider, field: field) {
+                    ProgressView().scaleEffect(0.55)
+                } else {
+                    Label(field.placeholder ?? "打开选择器", systemImage: "slider.horizontal.3")
+                }
+            }
+            .disabled(field.command == nil || store.isConfigurationActionRunning(provider: provider, field: field))
         case "toggle":
             Toggle("", isOn: Binding(
                 get: { value == "true" },

@@ -48,6 +48,9 @@ struct ExternalProviderConfigField: Codable, Identifiable, Equatable {
     let defaultValue: String?
     let help: String?
     let options: [ExternalProviderConfigOption]?
+    let command: String?
+    let arguments: [String]?
+    let workingDirectory: String?
 
     var id: String { key }
 }

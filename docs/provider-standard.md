@@ -142,6 +142,7 @@ Supported field types:
 - `toggle`
 - `select`
 - `multiselect`
+- `externalConfig`
 
 Status Hub writes provider config as JSON to `configFile` and preserves
 `runtime/` during plugin updates.
@@ -153,3 +154,22 @@ and branch selection, keep that interaction inside the provider. Expose it as a
 provider action or helper command, while Status Hub remains the generic launcher
 and status renderer.
 
+Declare that flow as an `externalConfig` field:
+
+```json
+{
+  "key": "repositories",
+  "title": "Monitored Projects",
+  "type": "externalConfig",
+  "placeholder": "Select projects and branches",
+  "help": "Opens the provider-owned selector and writes configFile",
+  "command": "bin/configurator",
+  "arguments": [],
+  "workingDirectory": "."
+}
+```
+
+When the user clicks the field, Status Hub starts `command` and passes the same
+provider environment variables. The helper should read and write
+`STATUS_HUB_CONFIG_FILE`; Status Hub reloads and restarts the provider after the
+helper exits.

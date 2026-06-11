@@ -308,6 +308,59 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         restart(provider)
     }
 
+    func configurationActionKey(provider: ExternalProviderRuntime, field: ExternalProviderConfigField) -> String {
+        "\(provider.id):config:\(field.key)"
+    }
+
+    func isConfigurationActionRunning(provider: ExternalProviderRuntime, field: ExternalProviderConfigField) -> Bool {
+        runningActionIds.contains(configurationActionKey(provider: provider, field: field))
+    }
+
+    func runConfigurationAction(_ field: ExternalProviderConfigField, provider: ExternalProviderRuntime) {
+        guard let command = field.command else { return }
+        let key = configurationActionKey(provider: provider, field: field)
+        guard !runningActionIds.contains(key) else { return }
+
+        let commandURL = expandPath(command, baseDirectory: provider.baseDirectory)
+        let workingDirectory = field.workingDirectory
+            .map { expandPath($0, baseDirectory: provider.baseDirectory) }
+            ?? provider.baseDirectory
+        var environment = ProcessInfo.processInfo.environment.merging([
+            "STATUS_HUB_PROVIDER_ID": provider.id,
+            "STATUS_HUB_CONFIG_FIELD": field.key,
+            "STATUS_HUB_DATA_DIR": provider.baseDirectory
+                .appendingPathComponent("runtime", isDirectory: true)
+                .path
+        ]) { _, new in new }
+        if let configURL = configURL(for: provider) {
+            environment["STATUS_HUB_CONFIG_FILE"] = configURL.path
+        }
+
+        runningActionIds.insert(key)
+        Task {
+            do {
+                try await Self.runProcess(
+                    executableURL: commandURL,
+                    arguments: field.arguments ?? [],
+                    workingDirectory: workingDirectory,
+                    environment: environment
+                )
+                await MainActor.run {
+                    self.errorMessage = nil
+                    self.restart(provider)
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "执行 \(field.title) 失败：\(error.localizedDescription)"
+                }
+            }
+            await MainActor.run {
+                self.runningActionIds.remove(key)
+                self.reload()
+            }
+        }
+    }
+
     private func loadLocalProviders() -> [ExternalProviderRuntime] {
         guard let files = try? fileManager.contentsOfDirectory(
             at: providerDirectory,

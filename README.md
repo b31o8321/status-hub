@@ -50,7 +50,7 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.12` / build `13`.
+Current app version: `0.1.13` / build `14`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
@@ -73,6 +73,9 @@ documents cannot stretch the status surface.
 provider navigation.
 `0.1.12` adds unsigned DMG packaging docs, provider standard docs, and
 plugin-relative image icons for providers.
+`0.1.13` adds provider-owned external configuration helpers, so complex
+settings such as GitLab project and branch selection can use a provider UI
+instead of JSON text fields.
 
 ## UI
 
