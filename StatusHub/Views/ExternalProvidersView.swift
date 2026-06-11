@@ -212,6 +212,13 @@ private struct MarketplacePlugin: Identifiable {
             subtitle: "CPU、内存、网络、电池、磁盘和温度状态",
             icon: "desktopcomputer",
             source: .builtin("mac-system")
+        ),
+        MarketplacePlugin(
+            id: "local-services",
+            title: "Local Services",
+            subtitle: "本机端口、HTTP、进程和开发运行时状态",
+            icon: "server.rack",
+            source: .builtin("local-services")
         )
     ]
 }

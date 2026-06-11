@@ -51,7 +51,7 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.16` / build `17`.
+Current app version: `0.1.17` / build `18`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
@@ -83,6 +83,7 @@ preserving provider `runtime/` data.
 buttons, and progress bars for running provider items.
 `0.1.16` adds bundled provider support so general-purpose marketplace providers
 can ship with Status Hub while custom providers stay GitHub-installed.
+`0.1.17` adds the bundled Local Services provider for local dev runtime checks.
 
 ## UI
 
@@ -111,6 +112,8 @@ Current marketplace plugins:
 
 - Mac System: built-in CPU, memory, network, battery, disk, and temperature
   status.
+- Local Services: built-in local ports, HTTP endpoints, processes, and
+  development runtime status.
 
 ## GitHub Plugin Installation
 

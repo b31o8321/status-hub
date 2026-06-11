@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.17
+
+- Add Local Services as a bundled provider for local ports, HTTP endpoints,
+  processes, and development runtime checks.
+- Add multiline provider configuration editing for textarea fields.
+
 ## 0.1.16
 
 - Add bundled provider support for general-purpose marketplace providers.

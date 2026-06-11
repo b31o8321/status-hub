@@ -436,6 +436,14 @@ private struct ConfigurationFieldRow: View {
             TextField(field.placeholder ?? "", text: $value)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 120)
+        case "textarea":
+            TextEditor(text: $value)
+                .font(.system(.caption, design: .monospaced))
+                .frame(minHeight: 70)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 0.5)
+                )
         default:
             TextField(field.placeholder ?? "", text: $value)
                 .textFieldStyle(.roundedBorder)

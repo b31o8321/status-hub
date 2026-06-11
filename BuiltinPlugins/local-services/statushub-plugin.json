@@ -1,0 +1,63 @@
+{
+  "id": "local-services",
+  "title": "Local Services",
+  "version": "0.1.0",
+  "providers": [
+    {
+      "id": "dev-runtime",
+      "title": "Local Services",
+      "icon": "server.rack",
+      "statusFile": "runtime/status.json",
+      "configFile": "runtime/config.json",
+      "command": "bin/local-services-provider",
+      "arguments": [],
+      "workingDirectory": ".",
+      "configuration": [
+        {
+          "id": "runtime",
+          "title": "运行",
+          "fields": [
+            {
+              "key": "refreshIntervalSeconds",
+              "title": "刷新间隔",
+              "type": "number",
+              "defaultValue": "10",
+              "placeholder": "10",
+              "help": "单位：秒"
+            }
+          ]
+        },
+        {
+          "id": "checks",
+          "title": "检查项",
+          "fields": [
+            {
+              "key": "checks.ports",
+              "title": "端口",
+              "type": "textarea",
+              "defaultValue": "3000:web:false\n5173:vite:false\n8000:api:false\n8080:api:false\n5432:postgres:false\n6379:redis:false\n9200:elasticsearch:false",
+              "placeholder": "3000:web:false",
+              "help": "每行格式：端口:名称:是否必需，例如 5432:postgres:true"
+            },
+            {
+              "key": "checks.urls",
+              "title": "HTTP",
+              "type": "textarea",
+              "defaultValue": "",
+              "placeholder": "http://localhost:3000:frontend:false",
+              "help": "每行格式：URL:名称:是否必需，也支持 JSON 数组"
+            },
+            {
+              "key": "checks.processes",
+              "title": "进程",
+              "type": "textarea",
+              "defaultValue": "Docker:Docker:false\ncolima:Colima:false",
+              "placeholder": "Docker:Docker:false",
+              "help": "每行格式：进程关键词:名称:是否必需"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
