@@ -8,6 +8,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
 
     @Published private(set) var providers: [ExternalProviderRuntime] = []
     @Published private(set) var installedPlugins: [InstalledPlugin] = []
+    @Published private(set) var pluginUpdates: [String: PluginUpdateInfo] = [:]
     @Published var errorMessage: String?
     @Published var installMessage: String?
     @Published var isInstalling = false
@@ -102,7 +103,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             if fileManager.fileExists(atPath: target.path) {
                 let manifestURL = target.appendingPathComponent("statushub-plugin.json")
                 if fileManager.fileExists(atPath: manifestURL.path) {
-                    try await runGit(arguments: ["-C", target.path, "pull", "--ff-only"])
+                    try await fetchAndCheckoutLatestTag(in: target)
                 } else {
                     try fileManager.removeItem(at: target)
                     try await clonePlugin(from: source, to: target)
@@ -117,10 +118,51 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             }
 
             reload()
+            await refreshPluginUpdates()
             installMessage = "已安装 \(source)"
         } catch {
             installMessage = "安装失败：\(error.localizedDescription)"
         }
+    }
+
+    func refreshPluginUpdates() async {
+        let plugins = installedPlugins
+        guard !plugins.isEmpty else {
+            pluginUpdates = [:]
+            return
+        }
+
+        for plugin in plugins {
+            pluginUpdates[plugin.id] = PluginUpdateInfo(
+                currentTag: plugin.gitTag,
+                latestTag: pluginUpdates[plugin.id]?.latestTag,
+                isChecking: true,
+                errorMessage: nil
+            )
+        }
+
+        for plugin in plugins {
+            do {
+                let latestTag = try await latestRemoteTag(for: plugin.sourceURL)
+                pluginUpdates[plugin.id] = PluginUpdateInfo(
+                    currentTag: plugin.gitTag,
+                    latestTag: latestTag,
+                    isChecking: false,
+                    errorMessage: nil
+                )
+            } catch {
+                pluginUpdates[plugin.id] = PluginUpdateInfo(
+                    currentTag: plugin.gitTag,
+                    latestTag: nil,
+                    isChecking: false,
+                    errorMessage: error.localizedDescription
+                )
+            }
+        }
+    }
+
+    func updateInfo(for pluginId: String) -> PluginUpdateInfo? {
+        pluginUpdates[pluginId]
     }
 
     private func loadLocalProviders() -> [ExternalProviderRuntime] {
@@ -176,7 +218,8 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             return InstalledPlugin(
                 manifest: manifest,
                 sourceURL: readGitOrigin(from: directory) ?? directory.path,
-                directory: directory
+                directory: directory,
+                gitTag: readCurrentGitTag(from: directory)
             )
         }.sorted {
             $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
@@ -249,11 +292,22 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         ]) { _, new in new }
 
         do {
+            terminateStaleCommand(at: commandURL)
             try process.run()
             processes[provider.id] = process
         } catch {
             errorMessage = "启动 \(provider.title) 失败：\(error.localizedDescription)"
         }
+    }
+
+    private func terminateStaleCommand(at commandURL: URL) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        process.arguments = ["-f", NSRegularExpression.escapedPattern(for: commandURL.path)]
+        process.standardOutput = Pipe()
+        process.standardError = Pipe()
+        try? process.run()
+        process.waitUntilExit()
     }
 
     private func expandPath(_ path: String, baseDirectory: URL) -> URL {
@@ -277,7 +331,8 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
 
     private func clonePlugin(from source: String, to target: URL) async throws {
         do {
-            try await runGit(arguments: ["clone", "--depth", "1", source, target.path])
+            _ = try await runGit(arguments: ["clone", "--depth", "1", source, target.path])
+            try await fetchAndCheckoutLatestTag(in: target)
         } catch {
             guard let fallback = githubSSHURL(for: source), fallback != source else {
                 throw error
@@ -285,8 +340,15 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             if fileManager.fileExists(atPath: target.path) {
                 try fileManager.removeItem(at: target)
             }
-            try await runGit(arguments: ["clone", "--depth", "1", fallback, target.path])
+            _ = try await runGit(arguments: ["clone", "--depth", "1", fallback, target.path])
+            try await fetchAndCheckoutLatestTag(in: target)
         }
+    }
+
+    private func fetchAndCheckoutLatestTag(in target: URL) async throws {
+        _ = try await runGit(arguments: ["-C", target.path, "fetch", "--tags", "--force"])
+        guard let latestTag = try await latestLocalTag(in: target) else { return }
+        _ = try await runGit(arguments: ["-C", target.path, "checkout", "--quiet", latestTag])
     }
 
     private func githubSSHURL(for source: String) -> String? {
@@ -300,8 +362,36 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         return "git@github.com:\(path)"
     }
 
-    private func runGit(arguments: [String], timeoutSeconds: TimeInterval = 45) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+    private func latestLocalTag(in target: URL) async throws -> String? {
+        let output = try await runGit(arguments: ["-C", target.path, "tag", "--list"])
+        return latestTag(from: output.split(separator: "\n").map(String.init))
+    }
+
+    private func latestRemoteTag(for sourceURL: String) async throws -> String? {
+        let output = try await runGit(arguments: ["ls-remote", "--tags", sourceURL], timeoutSeconds: 20)
+        let tags = output.split(separator: "\n").compactMap { line -> String? in
+            guard let ref = line.split(separator: "\t").last else { return nil }
+            let name = String(ref).replacingOccurrences(of: "refs/tags/", with: "")
+            return name.hasSuffix("^{}") ? nil : name
+        }
+        return latestTag(from: tags)
+    }
+
+    private func latestTag(from tags: [String]) -> String? {
+        tags
+            .filter { !$0.isEmpty }
+            .sorted { lhs, rhs in
+                normalizedVersion(lhs).localizedStandardCompare(normalizedVersion(rhs)) == .orderedAscending
+            }
+            .last
+    }
+
+    private func normalizedVersion(_ tag: String) -> String {
+        tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+    }
+
+    private func runGit(arguments: [String], timeoutSeconds: TimeInterval = 45) async throws -> String {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
             process.arguments = arguments
@@ -313,7 +403,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
                 "GIT_SSH_COMMAND": "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
             ]) { _, new in new }
 
-            let state = GitRunState(continuation: continuation)
+            let state = GitRunState(continuation: continuation, pipe: pipe)
 
             process.terminationHandler = { process in
                 if process.terminationStatus == 0 {
@@ -357,16 +447,36 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    private func readCurrentGitTag(from directory: URL) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+        process.arguments = ["-C", directory.path, "describe", "--tags", "--exact-match"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return nil
+        }
+        guard process.terminationStatus == 0 else { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
 private final class GitRunState {
     private let lock = NSLock()
     private var didFinish = false
-    private let continuation: CheckedContinuation<Void, Error>
+    private let continuation: CheckedContinuation<String, Error>
+    private let pipe: Pipe
     var timeoutTask: DispatchWorkItem?
 
-    init(continuation: CheckedContinuation<Void, Error>) {
+    init(continuation: CheckedContinuation<String, Error>, pipe: Pipe) {
         self.continuation = continuation
+        self.pipe = pipe
     }
 
     func finish(_ result: Result<Void, Error>) {
@@ -381,7 +491,8 @@ private final class GitRunState {
         timeoutTask?.cancel()
         switch result {
         case .success:
-            continuation.resume()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            continuation.resume(returning: String(data: data, encoding: .utf8) ?? "")
         case .failure(let error):
             continuation.resume(throwing: error)
         }

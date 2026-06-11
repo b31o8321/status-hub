@@ -39,10 +39,27 @@ struct InstalledPlugin: Identifiable, Equatable {
     let manifest: StatusHubPluginManifest
     let sourceURL: String
     let directory: URL
+    let gitTag: String?
 
     var id: String { manifest.id }
     var title: String { manifest.title }
     var version: String? { manifest.version }
+}
+
+struct PluginUpdateInfo: Equatable {
+    let currentTag: String?
+    let latestTag: String?
+    let isChecking: Bool
+    let errorMessage: String?
+
+    var updateAvailable: Bool {
+        guard let currentTag, let latestTag else { return false }
+        return normalizedVersion(latestTag).localizedStandardCompare(normalizedVersion(currentTag)) == .orderedDescending
+    }
+
+    private func normalizedVersion(_ tag: String) -> String {
+        tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+    }
 }
 
 struct ExternalProviderSnapshot: Codable, Equatable {

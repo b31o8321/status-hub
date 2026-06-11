@@ -45,6 +45,7 @@ struct ExternalProvidersView: View {
                     MarketplacePluginRow(
                         plugin: plugin,
                         isInstalled: isInstalled(plugin),
+                        updateInfo: store.updateInfo(for: plugin.id),
                         isInstalling: store.isInstalling,
                         install: {
                             Task { await store.installPlugin(from: plugin.repositoryURL) }
@@ -54,6 +55,9 @@ struct ExternalProvidersView: View {
                     Divider()
                 }
             }
+        }
+        .task {
+            await store.refreshPluginUpdates()
         }
     }
 
@@ -155,8 +159,25 @@ private struct MarketplacePlugin: Identifiable {
 private struct MarketplacePluginRow: View {
     let plugin: MarketplacePlugin
     let isInstalled: Bool
+    let updateInfo: PluginUpdateInfo?
     let isInstalling: Bool
     let install: () -> Void
+
+    private var buttonTitle: String {
+        if !isInstalled { return "安装" }
+        guard let updateInfo else { return "检查中" }
+        if updateInfo.isChecking { return "检查中" }
+        if updateInfo.updateAvailable, let latestTag = updateInfo.latestTag {
+            return "更新 \(latestTag)"
+        }
+        return "已安装"
+    }
+
+    private var canInstallOrUpdate: Bool {
+        if isInstalling { return false }
+        if !isInstalled { return true }
+        return updateInfo?.updateAvailable == true
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -178,10 +199,10 @@ private struct MarketplacePluginRow: View {
                 if isInstalling {
                     ProgressView().scaleEffect(0.5)
                 } else {
-                    Text(isInstalled ? "更新" : "安装")
+                    Text(buttonTitle)
                 }
             }
-            .disabled(isInstalling)
+            .disabled(!canInstallOrUpdate)
         }
         .padding(.vertical, 9)
     }
@@ -209,10 +230,20 @@ private struct EmptyProvidersView: View {
 
 private struct ExternalProviderRow: View {
     let provider: ExternalProviderRuntime
+    @State private var isExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 8) {
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+                .frame(width: 10)
+
                 Image(systemName: provider.icon)
                     .frame(width: 16)
                     .foregroundColor(provider.status.color)
@@ -235,21 +266,23 @@ private struct ExternalProviderRow: View {
                     Text(summary)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
+                        .lineLimit(isExpanded ? 2 : 1)
                 }
 
-                if let updatedAt = provider.snapshot?.updatedAt {
-                    Text(relativeFormatter.localizedString(for: updatedAt, relativeTo: Date()))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
+                if isExpanded {
+                    if let updatedAt = provider.snapshot?.updatedAt {
+                        Text(relativeFormatter.localizedString(for: updatedAt, relativeTo: Date()))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
 
-                ForEach((provider.snapshot?.items ?? []).prefix(5)) { item in
-                    ExternalProviderItemRow(item: item)
+                    ForEach(provider.snapshot?.items ?? []) { item in
+                        ExternalProviderItemRow(item: item)
+                    }
                 }
             }
 
-            if provider.command != nil {
+            if isExpanded && provider.command != nil {
                 Text("由 Status Hub 托管运行")
                     .font(.caption2)
                     .foregroundColor(.secondary)

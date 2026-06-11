@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- Install and update tagged plugins by checking out the latest Git tag.
+- Show marketplace updates only when a newer remote tag exists.
+- Collapse provider metric details by default so multiple providers remain visible.
+- Clean up stale managed provider processes before launching a provider command.
+
 ## 0.1.0
 
 Initial Status Hub release.

@@ -20,6 +20,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupPopover()
 
         externalProviderStore.start()
+        Task { @MainActor in
+            await externalProviderStore.refreshPluginUpdates()
+        }
 
         hubStore.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async {
@@ -56,6 +59,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleRefresh() {
         Task { @MainActor in
             await externalProviderStore.refresh()
+            await externalProviderStore.refreshPluginUpdates()
         }
     }
 
