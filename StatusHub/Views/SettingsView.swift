@@ -6,16 +6,9 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var selectedSection: SettingsSection = .general
-    @State private var gitlabStep: Int = 1
-    @State private var gitlabUrl: String = ""
-    @State private var token: String = ""
-    @State private var pollInterval: String = "60"
-    @State private var selectedRepos: [Repository] = []
-    @State private var pluginURL: String = ""
+    @State private var pluginURL = ""
 
-    private var gitLabStore: RepositoryStore { store.gitLabProvider.store }
     private var externalStore: ExternalProviderStore { store.externalProviderStore }
-    private var service: GitLabServiceProtocol { GitLabService() }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,14 +27,11 @@ struct SettingsView: View {
             switch selectedSection {
             case .general:
                 generalView
-            case .gitlab:
-                gitLabSettingsView
             case .plugins:
                 pluginSettingsView
             }
         }
         .frame(width: 560, height: 620)
-        .onAppear { loadCurrentSettings() }
     }
 
     private var header: some View {
@@ -53,7 +43,7 @@ struct SettingsView: View {
                 Text("Status Hub 设置")
                     .font(.title2)
                     .fontWeight(.semibold)
-                Text("管理内置 Provider、外部插件和本地状态源")
+                Text("管理插件和外部 Provider")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -69,26 +59,16 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 16) {
                 SettingsSummaryRow(
                     title: "整体状态",
-                    subtitle: "\(store.overallStatus.label) · \(store.activeCount) 个运行中 · \(store.attentionCount) 个待确认",
+                    subtitle: "\(store.statusLabel) · \(store.activeCount) 个运行中 · \(store.attentionCount) 个待确认",
                     status: store.overallStatus,
+                    statusLabel: store.statusLabel,
                     icon: "circle.grid.2x2.fill"
                 )
                 SettingsSummaryRow(
-                    title: "Codex 自动化",
-                    subtitle: "\(store.automationStore.runs.count) 条运行记录",
-                    status: store.automationStore.overallStatus,
-                    icon: "bolt.rectangle"
-                )
-                SettingsSummaryRow(
-                    title: "GitLab Pipeline",
-                    subtitle: gitLabStore.states.isEmpty ? "未配置监控仓库" : "\(gitLabStore.states.count) 个分支监控",
-                    status: store.gitLabProvider.overallStatus,
-                    icon: "point.3.connected.trianglepath.dotted"
-                )
-                SettingsSummaryRow(
-                    title: "外部 Provider",
-                    subtitle: "\(externalStore.installedPlugins.count) 个插件，\(externalStore.providers.count) 个 Provider",
+                    title: "Provider",
+                    subtitle: "\(store.pluginCount) 个插件，\(store.providerCount) 个 Provider",
                     status: externalStore.overallStatus,
+                    statusLabel: store.providerCount == 0 ? "未配置" : externalStore.overallStatus.label,
                     icon: "square.stack.3d.up"
                 )
 
@@ -98,123 +78,16 @@ struct SettingsView: View {
                     Text("本地目录")
                         .font(.headline)
                     DirectoryRow(
-                        title: "外部 Provider 注册",
+                        title: "本地 Provider 注册",
                         path: "~/Library/Application Support/StatusHub/providers"
                     )
                     DirectoryRow(
                         title: "插件安装目录",
                         path: "~/Library/Application Support/StatusHub/plugins"
                     )
-                    DirectoryRow(
-                        title: "Codex 自动化记录",
-                        path: "~/Library/Application Support/IntelliAutomation/runs"
-                    )
                 }
             }
             .padding(16)
-        }
-    }
-
-    private var gitLabSettingsView: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(gitlabStep == 1 ? "GitLab 连接" : "GitLab 监控仓库")
-                    .font(.headline)
-                Spacer()
-                Text("\(gitlabStep)/2")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-
-            Divider()
-
-            if gitlabStep == 1 {
-                gitLabConnectionView
-            } else {
-                gitLabRepositoryView
-            }
-        }
-    }
-
-    private var gitLabConnectionView: some View {
-        VStack(spacing: 0) {
-            Form {
-                Section {
-                    TextField("https://gitlab.company.com", text: $gitlabUrl)
-                        .textFieldStyle(.roundedBorder)
-                } header: {
-                    Text("GitLab 地址")
-                }
-
-                Section {
-                    SecureField("glpat-xxxxxxxxxxxxxxxxxxxx", text: $token)
-                        .textFieldStyle(.roundedBorder)
-                    HStack {
-                        Text("需要 read_api 权限")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Button("?") {
-                            let baseUrl = gitlabUrl.isEmpty ? "https://gitlab.com" : gitlabUrl
-                            if let url = URL(string: "\(baseUrl)/-/profile/personal_access_tokens") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } header: {
-                    Text("Access Token")
-                }
-
-                Section {
-                    HStack {
-                        TextField("60", text: $pollInterval)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 80)
-                        Text("秒")
-                            .foregroundColor(.secondary)
-                    }
-                } header: {
-                    Text("轮询间隔")
-                }
-            }
-            .formStyle(.grouped)
-
-            Spacer()
-
-            HStack {
-                Spacer()
-                Button("下一步") {
-                    saveConnectionSettings()
-                    gitlabStep = 2
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(gitlabUrl.isEmpty || token.isEmpty)
-            }
-            .padding()
-        }
-    }
-
-    private var gitLabRepositoryView: some View {
-        VStack(spacing: 0) {
-            ProjectSearchView(
-                gitlabUrl: gitlabUrl,
-                token: token,
-                service: service,
-                selectedRepos: $selectedRepos
-            )
-
-            Divider()
-
-            HStack {
-                Button("返回连接") { gitlabStep = 1 }
-                    .buttonStyle(.plain)
-                Spacer()
-                Button("保存 GitLab 配置") { saveGitLabSettings() }
-                    .buttonStyle(.borderedProminent)
-            }
-            .padding()
         }
     }
 
@@ -289,36 +162,10 @@ struct SettingsView: View {
             }
         }
     }
-
-    private func loadCurrentSettings() {
-        gitlabUrl = gitLabStore.settings.gitlabUrl
-        token = KeychainService.loadToken() ?? ""
-        pollInterval = "\(gitLabStore.settings.pollInterval)"
-        selectedRepos = gitLabStore.settings.repositories
-    }
-
-    private func saveConnectionSettings() {
-        var settings = gitLabStore.settings
-        var cleanUrl = gitlabUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-        if cleanUrl.hasSuffix("/") { cleanUrl = String(cleanUrl.dropLast()) }
-        settings.gitlabUrl = cleanUrl
-        settings.pollInterval = max(10, Int(pollInterval) ?? 60)
-        gitLabStore.updateSettings(settings)
-        KeychainService.saveToken(token.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-
-    private func saveGitLabSettings() {
-        saveConnectionSettings()
-        var settings = gitLabStore.settings
-        settings.repositories = selectedRepos
-        gitLabStore.updateSettings(settings)
-        gitlabStep = 1
-    }
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case general
-    case gitlab
     case plugins
 
     var id: String { rawValue }
@@ -326,7 +173,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: return "总览"
-        case .gitlab: return "GitLab"
         case .plugins: return "插件"
         }
     }
@@ -336,6 +182,7 @@ private struct SettingsSummaryRow: View {
     let title: String
     let subtitle: String
     let status: HubStatus
+    var statusLabel: String? = nil
     let icon: String
 
     var body: some View {
@@ -351,7 +198,7 @@ private struct SettingsSummaryRow: View {
                     .foregroundColor(.secondary)
             }
             Spacer()
-            Text(status.label)
+            Text(statusLabel ?? status.label)
                 .font(.caption)
                 .foregroundColor(status.color)
         }

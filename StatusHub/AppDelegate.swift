@@ -7,28 +7,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var hubStore: HubStore!
-    private var gitLabProvider: GitLabProvider!
-    private var automationStore: CodexAutomationStore!
     private var externalProviderStore: ExternalProviderStore!
     private var cancellables = Set<AnyCancellable>()
     private var eventMonitor: Any?
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        gitLabProvider = GitLabProvider()
-        automationStore = CodexAutomationStore()
         externalProviderStore = ExternalProviderStore()
-        hubStore = HubStore(
-            gitLabProvider: gitLabProvider,
-            automationStore: automationStore,
-            externalProviderStore: externalProviderStore
-        )
+        hubStore = HubStore(externalProviderStore: externalProviderStore)
 
         setupStatusItem()
         setupPopover()
 
-        gitLabProvider.start()
-        automationStore.start()
         externalProviderStore.start()
 
         hubStore.objectWillChange.sink { [weak self] _ in
@@ -36,13 +26,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.updateIcon()
             }
         }.store(in: &cancellables)
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(updateIcon),
-            name: .repositoryStateDidChange,
-            object: nil
-        )
 
         NotificationCenter.default.addObserver(
             self,
@@ -72,8 +55,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func handleRefresh() {
         Task { @MainActor in
-            await gitLabProvider.refresh()
-            await automationStore.refresh()
             await externalProviderStore.refresh()
         }
     }

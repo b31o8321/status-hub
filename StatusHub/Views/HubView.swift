@@ -31,14 +31,10 @@ struct HubView: View {
             Divider()
 
             switch selectedTab {
-            case .automation:
-                AutomationRunsView(store: store.automationStore)
-            case .gitlab:
-                GitLabProviderView(store: store.gitLabProvider.store)
-            case .external:
-                ExternalProvidersView(store: store.externalProviderStore)
             case .all:
                 OverviewView(store: store)
+            case .providers:
+                ExternalProvidersView(store: store.externalProviderStore)
             }
         }
         .frame(width: 380, height: 520)
@@ -83,7 +79,7 @@ struct HubView: View {
     }
 
     private var headerSubtitle: String {
-        var parts = [store.overallStatus.label]
+        var parts = [store.statusLabel]
         if store.activeCount > 0 {
             parts.append("\(store.activeCount) 个运行中")
         }
@@ -96,18 +92,14 @@ struct HubView: View {
 
 private enum HubTab: String, CaseIterable, Identifiable {
     case all
-    case automation
-    case gitlab
-    case external
+    case providers
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .all: return "总览"
-        case .automation: return "自动化"
-        case .gitlab: return "GitLab"
-        case .external: return "外部"
+        case .providers: return "插件"
         }
     }
 }
@@ -118,56 +110,46 @@ private struct OverviewView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                ProviderSummaryRow(
-                    title: "Codex 自动化",
-                    subtitle: automationSubtitle,
-                    status: store.automationStore.overallStatus,
-                    icon: "bolt.rectangle"
-                )
-                ProviderSummaryRow(
-                    title: "GitLab Pipeline",
-                    subtitle: gitLabSubtitle,
-                    status: store.gitLabProvider.overallStatus,
-                    icon: "point.3.connected.trianglepath.dotted"
-                )
-                ProviderSummaryRow(
-                    title: "外部 Provider",
-                    subtitle: externalSubtitle,
-                    status: store.externalProviderStore.overallStatus,
-                    icon: "square.stack.3d.up"
-                )
-
-                ForEach(store.externalProviderStore.providers) { provider in
+                if store.providerCount == 0 {
+                    EmptyHubView()
+                } else {
                     ProviderSummaryRow(
-                        title: provider.title,
-                        subtitle: provider.snapshot?.summary ?? provider.errorMessage ?? "无状态摘要",
-                        status: provider.status,
-                        icon: provider.icon
+                        title: "Provider",
+                        subtitle: "\(store.pluginCount) 个插件，\(store.providerCount) 个 Provider",
+                        status: store.externalProviderStore.overallStatus,
+                        icon: "square.stack.3d.up"
                     )
+
+                    ForEach(store.externalProviderStore.providers) { provider in
+                        ProviderSummaryRow(
+                            title: provider.title,
+                            subtitle: provider.snapshot?.summary ?? provider.errorMessage ?? "无状态摘要",
+                            status: provider.status,
+                            icon: provider.icon
+                        )
+                    }
                 }
             }
             .padding(12)
         }
     }
+}
 
-    private var automationSubtitle: String {
-        let total = store.automationStore.runs.count
-        let active = store.automationStore.activeRuns.count
-        if total == 0 { return "暂无本地自动化运行记录" }
-        if active > 0 { return "\(active) 个运行中，最近 \(total) 条记录" }
-        return "最近 \(total) 条记录"
-    }
-
-    private var gitLabSubtitle: String {
-        let total = store.gitLabProvider.store.states.count
-        if total == 0 { return "未配置监控仓库" }
-        return "\(total) 个分支监控"
-    }
-
-    private var externalSubtitle: String {
-        let total = store.externalProviderStore.providers.count
-        if total == 0 { return "暂无外部程序注册" }
-        return "\(total) 个外部 Provider"
+private struct EmptyHubView: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "square.stack.3d.up")
+                .font(.title2)
+                .foregroundColor(.secondary)
+            Text("暂无 Provider")
+                .font(.headline)
+            Text("从插件页安装 Provider 后，这里会显示状态总览。")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, minHeight: 260)
+        .padding(20)
     }
 }
 
