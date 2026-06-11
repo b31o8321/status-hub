@@ -26,23 +26,24 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.0` / build `1`.
+Current app version: `0.1.2` / build `3`.
 
-`0.1.0` is the first Status Hub version after separating the app from previous
-single-purpose monitors. The app itself is now only the menu-bar shell, provider
-installer, provider process manager, and status renderer.
+`0.1.2` keeps the app as the menu-bar shell, provider installer, provider
+process manager, and status renderer. Provider management lives in Settings so
+the main popover stays focused on live status.
 
 ## UI
 
-The menu bar popover opens on the **总览** tab by default:
+The menu bar popover opens on **总览** by default:
 
 - 总览: overall hub status and provider summaries.
-- 插件: marketplace, installed providers, and GitHub plugin installation.
+- Pinned providers: providers marked as **一级展示** in Settings appear beside
+  总览 as first-level pages.
 
 The settings window is also hub-oriented:
 
 - 总览: current hub status and local data directories.
-- 插件: install or inspect GitHub provider plugins.
+- 插件: installed providers, marketplace, and GitHub plugin installation.
 
 ## Marketplace
 
@@ -74,7 +75,7 @@ registration or GitHub plugin protocol below.
 
 ## GitHub Plugin Installation
 
-Open the Status Hub popover, switch to the **插件** tab, paste a GitHub URL, and
+Open Status Hub Settings, switch to **插件 > GitHub**, paste a GitHub URL, and
 click install. The app clones or pulls the repository under:
 
 ```text

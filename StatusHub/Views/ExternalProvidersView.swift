@@ -3,7 +3,7 @@ import AppKit
 
 struct ExternalProvidersView: View {
     @ObservedObject var store: ExternalProviderStore
-    @State private var selectedTab: PluginTab = .marketplace
+    @State private var selectedTab: PluginTab = .installed
     @State private var pluginURL = ""
 
     var body: some View {
@@ -28,10 +28,10 @@ struct ExternalProvidersView: View {
             }
 
             switch selectedTab {
-            case .marketplace:
-                marketplaceView
             case .installed:
                 installedView
+            case .marketplace:
+                marketplaceView
             case .github:
                 githubInstallView
             }
@@ -69,7 +69,14 @@ struct ExternalProvidersView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(store.providers) { provider in
-                            ExternalProviderRow(provider: provider)
+                            ExternalProviderRow(
+                                provider: provider,
+                                isPinned: store.isProviderPinned(provider.id),
+                                togglePinned: {
+                                    let isPinned = store.isProviderPinned(provider.id)
+                                    store.setProviderPinned(provider.id, pinned: !isPinned)
+                                }
+                            )
                                 .padding(.horizontal, 12)
                             Divider()
                         }
@@ -123,16 +130,16 @@ struct ExternalProvidersView: View {
 }
 
 private enum PluginTab: String, CaseIterable, Identifiable {
-    case marketplace
     case installed
+    case marketplace
     case github
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .marketplace: return "市场"
         case .installed: return "已安装"
+        case .marketplace: return "市场"
         case .github: return "GitHub"
         }
     }
@@ -230,6 +237,8 @@ private struct EmptyProvidersView: View {
 
 private struct ExternalProviderRow: View {
     let provider: ExternalProviderRuntime
+    let isPinned: Bool
+    let togglePinned: () -> Void
     @State private var isExpanded = false
 
     var body: some View {
@@ -251,6 +260,12 @@ private struct ExternalProviderRow: View {
                     .fontWeight(.medium)
                     .lineLimit(1)
                 Spacer()
+                Button(action: togglePinned) {
+                    Image(systemName: isPinned ? "pin.fill" : "pin")
+                        .foregroundColor(isPinned ? .accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help(isPinned ? "取消一级展示" : "在主界面一级展示")
                 Text(provider.status.label)
                     .font(.caption)
                     .foregroundColor(provider.status.color)

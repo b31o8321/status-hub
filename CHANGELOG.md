@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- Move plugin management out of the main popover and into Settings.
+- Keep the main popover focused on 总览 plus pinned provider pages.
+- Add per-provider 一级展示 pinning from the installed-provider list and overview rows.
+- Reorder plugin management by usage frequency: 已安装, 市场, GitHub.
+
 ## 0.1.1
 
 - Install and update tagged plugins by checking out the latest Git tag.

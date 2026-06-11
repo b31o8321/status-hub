@@ -9,6 +9,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
     @Published private(set) var providers: [ExternalProviderRuntime] = []
     @Published private(set) var installedPlugins: [InstalledPlugin] = []
     @Published private(set) var pluginUpdates: [String: PluginUpdateInfo] = [:]
+    @Published private(set) var pinnedProviderIds: Set<String>
     @Published var errorMessage: String?
     @Published var installMessage: String?
     @Published var isInstalling = false
@@ -19,6 +20,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
     private let decoder: JSONDecoder
     private var timer: Timer?
     private var processes: [String: Process] = [:]
+    private let pinnedProviderIdsKey = "ExternalProviderStore.pinnedProviderIds"
 
     init(
         fileManager: FileManager = .default,
@@ -30,6 +32,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         self.pluginsDirectory = pluginsDirectory
         self.decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
+        self.pinnedProviderIds = Set(UserDefaults.standard.stringArray(forKey: pinnedProviderIdsKey) ?? [])
     }
 
     nonisolated static func defaultProviderDirectory() -> URL {
@@ -56,6 +59,23 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
 
     var attentionCount: Int {
         providers.filter { $0.status == .attention }.count
+    }
+
+    var pinnedProviders: [ExternalProviderRuntime] {
+        providers.filter { pinnedProviderIds.contains($0.id) }
+    }
+
+    func isProviderPinned(_ providerId: String) -> Bool {
+        pinnedProviderIds.contains(providerId)
+    }
+
+    func setProviderPinned(_ providerId: String, pinned: Bool) {
+        if pinned {
+            pinnedProviderIds.insert(providerId)
+        } else {
+            pinnedProviderIds.remove(providerId)
+        }
+        UserDefaults.standard.set(Array(pinnedProviderIds).sorted(), forKey: pinnedProviderIdsKey)
     }
 
     func start() {

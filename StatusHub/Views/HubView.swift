@@ -9,19 +9,24 @@ extension Notification.Name {
 
 struct HubView: View {
     @ObservedObject var store: HubStore
-    @State private var selectedTab: HubTab = .all
+    @State private var selectedPage = HubPage.overview
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+    }
+
+    private var pinnedProviders: [ExternalProviderRuntime] {
+        store.externalProviderStore.pinnedProviders
     }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-            Picker("", selection: $selectedTab) {
-                ForEach(HubTab.allCases) { tab in
-                    Text(tab.title).tag(tab)
+            Picker("", selection: $selectedPage) {
+                Text("总览").tag(HubPage.overview)
+                ForEach(pinnedProviders) { provider in
+                    Text(provider.title).tag(provider.id)
                 }
             }
             .pickerStyle(.segmented)
@@ -30,14 +35,20 @@ struct HubView: View {
 
             Divider()
 
-            switch selectedTab {
-            case .all:
+            if selectedPage == HubPage.overview {
                 OverviewView(store: store)
-            case .providers:
-                ExternalProvidersView(store: store.externalProviderStore)
+            } else if let provider = pinnedProviders.first(where: { $0.id == selectedPage }) {
+                ProviderDetailView(provider: provider)
+            } else {
+                OverviewView(store: store)
             }
         }
         .frame(width: 380, height: 520)
+        .onChange(of: pinnedProviders.map(\.id)) { ids in
+            if selectedPage != HubPage.overview && !ids.contains(selectedPage) {
+                selectedPage = HubPage.overview
+            }
+        }
     }
 
     private var header: some View {
@@ -90,18 +101,8 @@ struct HubView: View {
     }
 }
 
-private enum HubTab: String, CaseIterable, Identifiable {
-    case all
-    case providers
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .all: return "总览"
-        case .providers: return "插件"
-        }
-    }
+private enum HubPage {
+    static let overview = "overview"
 }
 
 private struct OverviewView: View {
@@ -125,7 +126,12 @@ private struct OverviewView: View {
                             title: provider.title,
                             subtitle: provider.snapshot?.summary ?? provider.errorMessage ?? "无状态摘要",
                             status: provider.status,
-                            icon: provider.icon
+                            icon: provider.icon,
+                            isPinned: store.externalProviderStore.isProviderPinned(provider.id),
+                            togglePinned: {
+                                let isPinned = store.externalProviderStore.isProviderPinned(provider.id)
+                                store.externalProviderStore.setProviderPinned(provider.id, pinned: !isPinned)
+                            }
                         )
                     }
                 }
@@ -158,6 +164,8 @@ private struct ProviderSummaryRow: View {
     let subtitle: String
     let status: HubStatus
     let icon: String
+    var isPinned: Bool? = nil
+    var togglePinned: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 10) {
@@ -173,9 +181,87 @@ private struct ProviderSummaryRow: View {
                     .lineLimit(2)
             }
             Spacer()
+            if let isPinned, let togglePinned {
+                Button(action: togglePinned) {
+                    Image(systemName: isPinned ? "pin.fill" : "pin")
+                        .foregroundColor(isPinned ? .accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help(isPinned ? "取消一级展示" : "在主界面一级展示")
+            }
             Text(status.label)
                 .font(.caption)
                 .foregroundColor(status.color)
         }
+    }
+}
+
+private struct ProviderDetailView: View {
+    let provider: ExternalProviderRuntime
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                ProviderSummaryRow(
+                    title: provider.title,
+                    subtitle: provider.snapshot?.summary ?? provider.errorMessage ?? "无状态摘要",
+                    status: provider.status,
+                    icon: provider.icon
+                )
+
+                if let error = provider.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+
+                ForEach(provider.snapshot?.items ?? []) { item in
+                    ProviderItemCard(item: item)
+                }
+            }
+            .padding(12)
+        }
+    }
+}
+
+private struct ProviderItemCard: View {
+    let item: ExternalProviderItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill((item.status ?? .unknown).color)
+                    .frame(width: 7, height: 7)
+                Text(item.title)
+                    .fontWeight(.medium)
+                Spacer()
+                if let value = item.value {
+                    Text(value)
+                        .font(.caption)
+                        .foregroundColor((item.status ?? .unknown).color)
+                }
+            }
+            if let subtitle = item.subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+            if let detail = item.detail, !detail.isEmpty {
+                Text(detailSummary(detail))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func detailSummary(_ detail: [String: String]) -> String {
+        detail
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key): \($0.value)" }
+            .joined(separator: " · ")
     }
 }
