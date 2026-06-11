@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.9
+
+- Move provider item actions into compact icon buttons beside the item status.
+
 ## 0.1.8
 
 - Replace long inline log paths in job cards with an "打开日志目录" Finder shortcut.

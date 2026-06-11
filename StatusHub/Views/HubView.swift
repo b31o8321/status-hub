@@ -376,31 +376,32 @@ private struct ProviderItemCard: View {
                 Text(item.title)
                     .fontWeight(.medium)
                 Spacer()
+                if let actions = item.actions, !actions.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(actions) { action in
+                            Button {
+                                externalStore.runAction(action, for: item, provider: provider)
+                            } label: {
+                                if externalStore.isActionRunning(provider: provider, item: item, action: action) {
+                                    ProgressView()
+                                        .scaleEffect(0.45)
+                                        .frame(width: 16, height: 16)
+                                } else {
+                                    Image(systemName: actionIcon(action))
+                                        .frame(width: 16, height: 16)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(externalStore.isActionRunning(provider: provider, item: item, action: action))
+                            .help(action.title)
+                        }
+                    }
+                }
                 if let value = item.value {
                     Text(value)
                         .font(.caption)
                         .foregroundColor((item.status ?? .unknown).color)
                 }
-            }
-            if let actions = item.actions, !actions.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(actions) { action in
-                        Button {
-                            externalStore.runAction(action, for: item, provider: provider)
-                        } label: {
-                            if externalStore.isActionRunning(provider: provider, item: item, action: action) {
-                                ProgressView().scaleEffect(0.55)
-                            } else {
-                                Label(action.title, systemImage: action.destructive == true ? "exclamationmark.triangle" : "play.fill")
-                                    .labelStyle(.titleAndIcon)
-                            }
-                        }
-                        .disabled(externalStore.isActionRunning(provider: provider, item: item, action: action))
-                    }
-                    .buttonStyle(.bordered)
-                    Spacer()
-                }
-                .padding(.top, 2)
             }
             if let links = item.links, !links.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
@@ -444,6 +445,19 @@ private struct ProviderItemCard: View {
         displayDetails(detail)
             .map { "\($0.title): \($0.value)" }
             .joined(separator: " · ")
+    }
+
+    private func actionIcon(_ action: ExternalProviderAction) -> String {
+        if action.destructive == true {
+            return "exclamationmark.triangle"
+        }
+        if action.id.contains("disable") {
+            return "pause.fill"
+        }
+        if action.id.contains("enable") {
+            return "calendar.badge.plus"
+        }
+        return "play.fill"
     }
 
     private func displayDetails(_ detail: [String: String]) -> [(title: String, value: String)] {
