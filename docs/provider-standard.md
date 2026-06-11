@@ -1,13 +1,14 @@
 # Status Hub Provider Standard
 
-Status Hub is a generic host. Provider-specific code lives outside the app and
-communicates through manifests, status JSON files, optional commands, and
-configuration JSON.
+Status Hub is a generic host. Providers communicate through manifests, status
+JSON files, optional commands, and configuration JSON.
 
 ## Plugin Manifest
 
-GitHub-installed plugins must provide `statushub-plugin.json` at the repository
-root.
+Both bundled providers and GitHub-installed plugins use the same
+`statushub-plugin.json` schema. GitHub-installed plugins must provide the file
+at the repository root. Bundled providers are packaged by Status Hub under
+`BuiltinPlugins/<plugin-id>/`.
 
 ```json
 {
@@ -146,6 +147,23 @@ Supported field types:
 
 Status Hub writes provider config as JSON to `configFile` and preserves
 `runtime/` during plugin updates.
+
+## Distribution
+
+Use bundled providers for general-purpose functionality that should ship with
+Status Hub, such as system health. Use GitHub-installed providers for custom or
+team-specific integrations, such as GitLab monitoring or Intelli automation.
+
+Bundled providers are copied from the app bundle into:
+
+```text
+~/Library/Application Support/StatusHub/plugins/<plugin-id>/
+```
+
+They still run out of the user plugin directory so `runtime/`, generated
+helpers, and provider config remain writable. Bundled provider updates are
+delivered with the Status Hub app. GitHub-installed providers are updated from
+repository tags.
 
 ## Provider-Owned Advanced UI
 

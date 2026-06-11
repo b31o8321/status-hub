@@ -75,7 +75,14 @@ struct ExternalProvidersView: View {
                                 updateInfo: store.updateInfo(for: plugin.id),
                                 isInstalling: store.isInstalling,
                                 install: {
-                                    Task { await store.installPlugin(from: plugin.repositoryURL) }
+                                    Task {
+                                        switch plugin.source {
+                                        case .builtin(let id):
+                                            await store.installBuiltinPlugin(id: id)
+                                        case .github(let url):
+                                            await store.installPlugin(from: url)
+                                        }
+                                    }
                                 }
                             )
                             .padding(.horizontal, 12)
@@ -146,7 +153,11 @@ struct ExternalProvidersView: View {
 
     private func isInstalled(_ plugin: MarketplacePlugin) -> Bool {
         store.installedPlugins.contains { installed in
-            installed.id == plugin.id || installed.sourceURL == plugin.repositoryURL
+            if installed.id == plugin.id { return true }
+            if case .github(let url) = plugin.source {
+                return installed.sourceURL == url
+            }
+            return false
         }
     }
 
@@ -178,11 +189,21 @@ enum PluginTab: String, CaseIterable, Identifiable {
 }
 
 private struct MarketplacePlugin: Identifiable {
+    enum Source {
+        case builtin(String)
+        case github(String)
+    }
+
     let id: String
     let title: String
     let subtitle: String
     let icon: String
-    let repositoryURL: String
+    let source: Source
+
+    var isBuiltin: Bool {
+        if case .builtin = source { return true }
+        return false
+    }
 
     static let catalog = [
         MarketplacePlugin(
@@ -190,7 +211,7 @@ private struct MarketplacePlugin: Identifiable {
             title: "Mac System",
             subtitle: "CPU、内存、网络、电池、磁盘和温度状态",
             icon: "desktopcomputer",
-            repositoryURL: "git@github.com:b31o8321/status-hub-mac-system-provider.git"
+            source: .builtin("mac-system")
         )
     ]
 }
@@ -203,6 +224,9 @@ private struct MarketplacePluginRow: View {
     let install: () -> Void
 
     private var buttonTitle: String {
+        if plugin.isBuiltin {
+            return isInstalled ? "已启用" : "启用"
+        }
         if !isInstalled { return "安装" }
         guard let updateInfo else { return "检查中" }
         if updateInfo.isChecking { return "检查中" }
@@ -214,6 +238,7 @@ private struct MarketplacePluginRow: View {
 
     private var canInstallOrUpdate: Bool {
         if isInstalling { return false }
+        if plugin.isBuiltin { return !isInstalled }
         if !isInstalled { return true }
         return updateInfo?.updateAvailable == true
     }
@@ -230,6 +255,11 @@ private struct MarketplacePluginRow: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
+                if plugin.isBuiltin {
+                    Text("内置 Provider · 随 App 更新")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
             Spacer()
             Button {

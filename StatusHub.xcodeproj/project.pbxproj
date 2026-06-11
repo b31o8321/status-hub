@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1830282AF54130D8B7414F2F /* ProviderIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1F4BB71A397BACCE4F1D4C /* ProviderIconView.swift */; };
 		21663C8A26193AA605AD137D /* StatusHubApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 942621F08434260724466DB4 /* StatusHubApp.swift */; };
+		2370508C91609882D53522A4 /* BuiltinPlugins in Resources */ = {isa = PBXBuildFile; fileRef = 9E2A3F45E2C0F8E5010F52F4 /* BuiltinPlugins */; };
 		535A79ED38AE9AFC3DA1DB45 /* ExternalProvidersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C905A47FAAF1300690CF6063 /* ExternalProvidersView.swift */; };
 		5BCA9B5255EC081844208798 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 369E811E0C8C3B915C30CEC6 /* SettingsView.swift */; };
 		71F48C943D4A3E2FA909CB23 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 12EF96000C2ADA1471A05E2D /* Assets.xcassets */; };
@@ -42,6 +43,7 @@
 		8A47FE089B64758BADF5DA13 /* ExternalProviderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalProviderStore.swift; sourceTree = "<group>"; };
 		942621F08434260724466DB4 /* StatusHubApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusHubApp.swift; sourceTree = "<group>"; };
 		95C8F571CC152190CA140CC0 /* HubStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubStatus.swift; sourceTree = "<group>"; };
+		9E2A3F45E2C0F8E5010F52F4 /* BuiltinPlugins */ = {isa = PBXFileReference; lastKnownFileType = folder; path = BuiltinPlugins; sourceTree = SOURCE_ROOT; };
 		A78504212EF5735EDFD71252 /* StatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusProvider.swift; sourceTree = "<group>"; };
 		C8BF64F64E3966217E45136C /* ExternalProviderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalProviderModels.swift; sourceTree = "<group>"; };
 		C905A47FAAF1300690CF6063 /* ExternalProvidersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalProvidersView.swift; sourceTree = "<group>"; };
@@ -100,6 +102,7 @@
 		8B3D9C515137832BB1FDEE95 = {
 			isa = PBXGroup;
 			children = (
+				9E2A3F45E2C0F8E5010F52F4 /* BuiltinPlugins */,
 				06E49DC1E02BD24E898BF186 /* StatusHub */,
 				ACEE7472F2B6040A93C80398 /* StatusHubTests */,
 				28DDBE315FD7A2196B48531F /* Products */,
@@ -198,6 +201,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				71F48C943D4A3E2FA909CB23 /* Assets.xcassets in Resources */,
+				2370508C91609882D53522A4 /* BuiltinPlugins in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

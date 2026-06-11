@@ -194,6 +194,12 @@ private struct SettingsProviderOverviewRow: View {
     let updateInfo: PluginUpdateInfo?
 
     private var installText: String {
+        if plugin?.isBuiltin == true {
+            if let version = plugin?.version {
+                return "内置 \(version)"
+            }
+            return "内置"
+        }
         if let tag = plugin?.gitTag {
             return "已安装 \(tag)"
         }
@@ -204,6 +210,7 @@ private struct SettingsProviderOverviewRow: View {
     }
 
     private var updateText: String {
+        if plugin?.isBuiltin == true { return "随 App 更新" }
         guard let updateInfo else { return "未检查" }
         if updateInfo.isChecking { return "检查中" }
         if let error = updateInfo.errorMessage, !error.isEmpty { return "检查失败" }

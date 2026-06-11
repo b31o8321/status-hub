@@ -1,6 +1,6 @@
 # Status Hub
 
-macOS menu bar hub for local and GitHub-installed status providers.
+macOS menu bar hub for built-in, local, and GitHub-installed status providers.
 
 Status Hub starts empty after installation. It does not ship with domain-specific
 providers enabled by default. Every status source is installed or registered as
@@ -8,6 +8,7 @@ a provider plugin.
 
 The app is responsible for:
 
+- Enabling bundled general-purpose providers.
 - Installing or updating provider plugins from GitHub repositories.
 - Starting provider commands declared by plugin manifests.
 - Reading provider status JSON files.
@@ -50,7 +51,7 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.15` / build `16`.
+Current app version: `0.1.16` / build `17`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
@@ -80,6 +81,8 @@ instead of JSON text fields.
 preserving provider `runtime/` data.
 `0.1.15` improves provider detail rendering with generic links, direct open
 buttons, and progress bars for running provider items.
+`0.1.16` adds bundled provider support so general-purpose marketplace providers
+can ship with Status Hub while custom providers stay GitHub-installed.
 
 ## UI
 
@@ -99,13 +102,15 @@ The settings window is also hub-oriented:
 
 ## Marketplace
 
-The built-in marketplace only lists general-purpose plugins. Custom plugins such
-as team-specific GitLab monitors or Intelli automation providers should be
+The marketplace only lists general-purpose providers. Some entries are bundled
+with Status Hub and can be enabled without a GitHub repository. Custom plugins
+such as team-specific GitLab monitors or Intelli automation providers should be
 installed through the GitHub tab instead of being fixed marketplace entries.
 
 Current marketplace plugins:
 
-- Mac System: CPU, memory, network, battery, disk, and temperature status.
+- Mac System: built-in CPU, memory, network, battery, disk, and temperature
+  status.
 
 ## GitHub Plugin Installation
 

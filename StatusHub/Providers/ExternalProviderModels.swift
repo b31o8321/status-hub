@@ -78,6 +78,11 @@ struct InstalledPlugin: Identifiable, Equatable {
     var id: String { manifest.id }
     var title: String { manifest.title }
     var version: String? { manifest.version }
+    var isBuiltin: Bool { sourceURL.hasPrefix("builtin:") }
+    var builtinId: String? {
+        guard isBuiltin else { return nil }
+        return String(sourceURL.dropFirst("builtin:".count))
+    }
 }
 
 struct PluginUpdateInfo: Equatable {

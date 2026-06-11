@@ -23,6 +23,9 @@ targets:
     deploymentTarget: "13.0"
     sources:
       - path: StatusHub
+      - path: BuiltinPlugins
+        type: folder
+        buildPhase: resources
     resources:
       - StatusHub/Assets.xcassets
     info:
@@ -33,8 +36,8 @@ targets:
         CFBundleIdentifier: com.status-hub
         NSPrincipalClass: NSApplication
         CFBundleExecutable: "$(EXECUTABLE_NAME)"
-        CFBundleVersion: "16"
-        CFBundleShortVersionString: "0.1.15"
+        CFBundleVersion: "17"
+        CFBundleShortVersionString: "0.1.16"
         CFBundlePackageType: APPL
     settings:
       base:

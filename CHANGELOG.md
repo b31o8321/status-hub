@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.16
+
+- Add bundled provider support for general-purpose marketplace providers.
+- Ship Mac System as a built-in provider resource instead of requiring a
+  separate GitHub install for new users.
+- Keep GitHub-installed providers as the mechanism for custom team providers.
+
 ## 0.1.15
 
 - Replace document-specific link labels with generic provider links.

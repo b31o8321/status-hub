@@ -90,4 +90,22 @@ final class ExternalProviderModelsTests: XCTestCase {
         XCTAssertTrue(HubStatus.running > .unknown)
         XCTAssertTrue(HubStatus.success > .idle)
     }
+
+    func testInstalledPluginBuiltinSource() {
+        let manifest = StatusHubPluginManifest(
+            id: "mac-system",
+            title: "Mac System",
+            version: "0.1.3",
+            providers: []
+        )
+        let plugin = InstalledPlugin(
+            manifest: manifest,
+            sourceURL: "builtin:mac-system",
+            directory: URL(fileURLWithPath: "/tmp/mac-system"),
+            gitTag: nil
+        )
+
+        XCTAssertTrue(plugin.isBuiltin)
+        XCTAssertEqual(plugin.builtinId, "mac-system")
+    }
 }

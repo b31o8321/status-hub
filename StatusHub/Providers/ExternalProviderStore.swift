@@ -44,6 +44,10 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         defaultBaseDirectory().appendingPathComponent("plugins", isDirectory: true)
     }
 
+    nonisolated static func defaultBuiltinPluginsDirectory() -> URL? {
+        Bundle.main.resourceURL?.appendingPathComponent("BuiltinPlugins", isDirectory: true)
+    }
+
     nonisolated private static func defaultBaseDirectory() -> URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
@@ -148,6 +152,21 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         }
     }
 
+    func installBuiltinPlugin(id builtinId: String) async {
+        isInstalling = true
+        installMessage = "正在启用 \(builtinId)"
+        defer { isInstalling = false }
+
+        do {
+            try installBuiltinPluginContents(id: builtinId)
+            reload()
+            await refreshPluginUpdates()
+            installMessage = "已启用 \(builtinId)"
+        } catch {
+            installMessage = "启用失败：\(error.localizedDescription)"
+        }
+    }
+
     func refreshPluginUpdates() async {
         let plugins = installedPlugins
         guard !plugins.isEmpty else {
@@ -156,6 +175,15 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         }
 
         for plugin in plugins {
+            if plugin.isBuiltin {
+                pluginUpdates[plugin.id] = PluginUpdateInfo(
+                    currentTag: plugin.version,
+                    latestTag: plugin.version,
+                    isChecking: false,
+                    errorMessage: nil
+                )
+                continue
+            }
             pluginUpdates[plugin.id] = PluginUpdateInfo(
                 currentTag: plugin.gitTag,
                 latestTag: pluginUpdates[plugin.id]?.latestTag,
@@ -165,6 +193,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         }
 
         for plugin in plugins {
+            if plugin.isBuiltin { continue }
             do {
                 let latestTag = try await latestRemoteTag(for: plugin.sourceURL)
                 pluginUpdates[plugin.id] = PluginUpdateInfo(
@@ -210,9 +239,13 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         var failures: [String] = []
         for plugin in plugins {
             do {
-                let preservedRuntime = try preserveRuntimeDirectory(for: plugin.directory)
-                try await fetchAndCheckoutLatestTag(in: plugin.directory)
-                try restoreRuntimeDirectory(preservedRuntime, to: plugin.directory)
+                if let builtinId = plugin.builtinId {
+                    try installBuiltinPluginContents(id: builtinId, preferredTarget: plugin.directory)
+                } else {
+                    let preservedRuntime = try preserveRuntimeDirectory(for: plugin.directory)
+                    try await fetchAndCheckoutLatestTag(in: plugin.directory)
+                    try restoreRuntimeDirectory(preservedRuntime, to: plugin.directory)
+                }
             } catch {
                 failures.append("\(plugin.title)：\(error.localizedDescription)")
             }
@@ -243,7 +276,10 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             "STATUS_HUB_PROVIDER_ID": provider.id,
             "STATUS_HUB_ITEM_ID": item.id,
             "STATUS_HUB_ACTION_ID": action.id,
-            "STATUS_HUB_ACTION_TITLE": action.title
+            "STATUS_HUB_ACTION_TITLE": action.title,
+            "STATUS_HUB_DATA_DIR": provider.baseDirectory
+                .appendingPathComponent("runtime", isDirectory: true)
+                .path
         ]) { _, new in new }
         let actionEnvironment: [String: String]
         if let configURL = configURL(for: provider) {
@@ -413,7 +449,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             }
             return InstalledPlugin(
                 manifest: manifest,
-                sourceURL: readGitOrigin(from: directory) ?? directory.path,
+                sourceURL: readPluginSource(from: directory) ?? readGitOrigin(from: directory) ?? directory.path,
                 directory: directory,
                 gitTag: readCurrentGitTag(from: directory)
             )
@@ -486,7 +522,10 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         process.currentDirectoryURL = workingDirectory
         process.environment = ProcessInfo.processInfo.environment.merging([
             "STATUS_HUB_PROVIDER_ID": provider.id,
-            "STATUS_HUB_STATUS_FILE": expandPath(provider.manifest.statusFile, baseDirectory: provider.baseDirectory).path
+            "STATUS_HUB_STATUS_FILE": expandPath(provider.manifest.statusFile, baseDirectory: provider.baseDirectory).path,
+            "STATUS_HUB_DATA_DIR": provider.baseDirectory
+                .appendingPathComponent("runtime", isDirectory: true)
+                .path
         ]) { _, new in new }
         if let configURL = configURL(for: provider) {
             process.environment?["STATUS_HUB_CONFIG_FILE"] = configURL.path
@@ -630,6 +669,34 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         _ = try await runGit(arguments: ["-C", target.path, "checkout", "--force", "--quiet", latestTag])
     }
 
+    private func installBuiltinPluginContents(id builtinId: String, preferredTarget: URL? = nil) throws {
+        guard let sourceRoot = Self.defaultBuiltinPluginsDirectory() else {
+            throw PluginInstallError.missingBuiltinDirectory
+        }
+        let source = sourceRoot.appendingPathComponent(builtinId, isDirectory: true)
+        guard fileManager.fileExists(atPath: source.appendingPathComponent("statushub-plugin.json").path) else {
+            throw PluginInstallError.missingBuiltinPlugin(builtinId)
+        }
+
+        try fileManager.createDirectory(at: pluginsDirectory, withIntermediateDirectories: true)
+        let target = preferredTarget
+            ?? installedPlugins.first { $0.id == builtinId }?.directory
+            ?? pluginsDirectory.appendingPathComponent(builtinId, isDirectory: true)
+        let preservedRuntime = try preserveRuntimeDirectory(for: target)
+        if fileManager.fileExists(atPath: target.path) {
+            try fileManager.removeItem(at: target)
+        }
+        try fileManager.copyItem(at: source, to: target)
+        try restoreRuntimeDirectory(preservedRuntime, to: target)
+        try writeBuiltinSourceMetadata(id: builtinId, to: target)
+    }
+
+    private func writeBuiltinSourceMetadata(id builtinId: String, to pluginDirectory: URL) throws {
+        let object: [String: String] = ["type": "builtin", "id": builtinId]
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: pluginDirectory.appendingPathComponent(".statushub-source.json"), options: [.atomic])
+    }
+
     private func preserveRuntimeDirectory(for pluginDirectory: URL) throws -> URL? {
         let runtimeURL = pluginDirectory.appendingPathComponent("runtime", isDirectory: true)
         guard fileManager.fileExists(atPath: runtimeURL.path) else { return nil }
@@ -764,6 +831,18 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         }
     }
 
+    private func readPluginSource(from directory: URL) -> String? {
+        let sourceURL = directory.appendingPathComponent(".statushub-source.json")
+        guard let data = try? Data(contentsOf: sourceURL),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+              object["type"] == "builtin",
+              let id = object["id"],
+              !id.isEmpty else {
+            return nil
+        }
+        return "builtin:\(id)"
+    }
+
     private func readGitOrigin(from directory: URL) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -835,6 +914,8 @@ private final class GitRunState {
 
 private enum PluginInstallError: LocalizedError {
     case missingManifest
+    case missingBuiltinDirectory
+    case missingBuiltinPlugin(String)
     case gitFailed(String)
     case gitTimedOut(String)
     case processFailed(String)
@@ -843,6 +924,10 @@ private enum PluginInstallError: LocalizedError {
         switch self {
         case .missingManifest:
             return "插件仓库缺少 statushub-plugin.json"
+        case .missingBuiltinDirectory:
+            return "App 内未找到内置 Provider 目录"
+        case .missingBuiltinPlugin(let id):
+            return "App 内未找到内置 Provider：\(id)"
         case .gitFailed(let output):
             return output
         case .gitTimedOut(let command):
