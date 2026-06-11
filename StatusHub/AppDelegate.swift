@@ -163,11 +163,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func updateIcon() {
         Task { @MainActor in
             let status = self.hubStore.overallStatus
-            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-            let image = NSImage(systemSymbolName: status.systemSymbolName, accessibilityDescription: nil)?
-                .withSymbolConfiguration(config)
-            image?.isTemplate = true
-            self.statusItem.button?.image = image
+            if let image = NSImage(named: "status-hub-icon") {
+                image.isTemplate = true
+                image.size = NSSize(width: 18, height: 18)
+                self.statusItem.button?.image = image
+            } else {
+                let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+                let image = NSImage(systemSymbolName: status.systemSymbolName, accessibilityDescription: nil)?
+                    .withSymbolConfiguration(config)
+                image?.isTemplate = true
+                self.statusItem.button?.image = image
+            }
         }
     }
 }
