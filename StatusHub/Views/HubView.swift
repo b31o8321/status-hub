@@ -1,6 +1,9 @@
 import SwiftUI
 import AppKit
 
+private let maxProviderMenuLinks = 5
+private let maxProviderItemLinks = 3
+
 extension Notification.Name {
     static let openSettings = Notification.Name("com.status-hub.openSettings")
     static let refreshRequested = Notification.Name("com.status-hub.refreshRequested")
@@ -217,7 +220,7 @@ private struct ProviderCompactRow: View {
 
                 if !links.isEmpty {
                     Menu {
-                        ForEach(links.prefix(8)) { link in
+                        ForEach(links.prefix(maxProviderMenuLinks)) { link in
                             Button(link.title) {
                                 open(link.url)
                             }
@@ -405,7 +408,7 @@ private struct ProviderItemCard: View {
             }
             if let links = item.links, !links.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(links.prefix(3)) { link in
+                    ForEach(links.prefix(maxProviderItemLinks)) { link in
                         Link(destination: URL(string: link.url) ?? URL(fileURLWithPath: link.url)) {
                             Label("最新文档：\(link.title)", systemImage: "doc.text")
                                 .font(.caption)

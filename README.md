@@ -26,7 +26,7 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.9` / build `10`.
+Current app version: `0.1.10` / build `11`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
@@ -43,6 +43,8 @@ installing or updating GitHub plugins.
 shortcut instead.
 `0.1.9` moves provider item actions into compact icon buttons beside each
 item's status.
+`0.1.10` caps provider output links in compact menus and job cards so recent
+documents cannot stretch the status surface.
 
 ## UI
 

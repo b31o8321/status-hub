@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.10
+
+- Cap provider output links in the compact overview menu and job cards.
+
 ## 0.1.9
 
 - Move provider item actions into compact icon buttons beside the item status.
