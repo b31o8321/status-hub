@@ -2,9 +2,9 @@
 
 macOS menu bar hub for local and GitHub-installed status providers.
 
-Status Hub starts empty after installation. It does not ship with GitLab,
-Codex, or Intelli automation providers enabled by default. Every status source
-is installed or registered as a provider plugin.
+Status Hub starts empty after installation. It does not ship with domain-specific
+providers enabled by default. Every status source is installed or registered as
+a provider plugin.
 
 The app is responsible for:
 
@@ -23,6 +23,14 @@ StatusHub
         ~/Library/Application Support/StatusHub/providers/*.json
         ~/Library/Application Support/StatusHub/plugins/*/statushub-plugin.json
 ```
+
+## Version
+
+Current app version: `0.1.0` / build `1`.
+
+`0.1.0` is the first Status Hub version after separating the app from previous
+single-purpose monitors. The app itself is now only the menu-bar shell, provider
+installer, provider process manager, and status renderer.
 
 ## UI
 
@@ -94,6 +102,8 @@ If `command` is present, Status Hub starts that command and passes:
 
 - `STATUS_HUB_PROVIDER_ID`
 - `STATUS_HUB_STATUS_FILE`
+- `STATUS_HUB_CONFIG_FILE` and `STATUS_HUB_DATA_DIR` are planned for configurable
+  providers.
 
 The provider command should keep running and write the status file atomically.
 Status Hub does not load plugin code into the app process; plugins communicate by
