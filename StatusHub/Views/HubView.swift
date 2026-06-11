@@ -44,7 +44,6 @@ struct HubView: View {
                 OverviewView(store: store)
             }
         }
-        .background(.ultraThinMaterial)
         .frame(width: 380, height: 520)
         .onChange(of: pinnedProviders.map(\.id)) { ids in
             if selectedPage != HubPage.overview && !ids.contains(selectedPage) {
@@ -129,7 +128,6 @@ private struct OverviewView: View {
             }
             .padding(12)
         }
-        .background(.ultraThinMaterial)
     }
 }
 
@@ -155,9 +153,7 @@ private struct OverviewHeaderCard: View {
                 .foregroundColor(.secondary)
                 .lineLimit(2)
         }
-        .padding(10)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.vertical, 6)
     }
 
     private var summary: String {
@@ -284,7 +280,6 @@ private struct ProviderDetailView: View {
             ProviderDetailSection(provider: provider, externalStore: externalStore)
                 .padding(12)
         }
-        .background(.ultraThinMaterial)
     }
 }
 
@@ -372,8 +367,6 @@ private struct ProviderDetailSection: View {
             }
         }
         .padding(10)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
