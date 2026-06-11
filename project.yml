@@ -1,0 +1,66 @@
+name: StatusHub
+options:
+  bundleIdPrefix: com.status-hub
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: com.status-hub
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGNING_ALLOWED: "YES"
+    CODE_SIGN_IDENTITY: "-"
+
+targets:
+  StatusHub:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: StatusHub
+    resources:
+      - StatusHub/Assets.xcassets
+    info:
+      path: StatusHub/Info.plist
+      properties:
+        LSUIElement: true
+        CFBundleName: StatusHub
+        CFBundleIdentifier: com.status-hub
+        NSPrincipalClass: NSApplication
+        CFBundleExecutable: "$(EXECUTABLE_NAME)"
+        CFBundleVersion: "11"
+        CFBundleShortVersionString: "0.1.11"
+        CFBundlePackageType: APPL
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.status-hub
+        INFOPLIST_FILE: StatusHub/Info.plist
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "YES"
+        CODE_SIGN_IDENTITY: "-"
+
+  StatusHubTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: StatusHubTests
+    dependencies:
+      - target: StatusHub
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/StatusHub.app/Contents/MacOS/StatusHub"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "YES"
+        CODE_SIGN_IDENTITY: "-"
