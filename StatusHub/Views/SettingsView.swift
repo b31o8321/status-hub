@@ -27,7 +27,7 @@ struct SettingsView: View {
 
             switch selectedTab {
             case .overview:
-                ExternalProvidersView(store: externalStore, fixedTab: .installed)
+                SettingsOverviewView(store: externalStore)
             case .installed:
                 configurationView
             case .marketplace:
@@ -65,10 +65,9 @@ struct SettingsView: View {
                 emptyConfigurationView
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 10) {
                         ForEach(configurableProviders) { provider in
                             ProviderConfigurationView(provider: provider, store: externalStore)
-                            Divider()
                         }
                     }
                     .padding(18)
@@ -100,6 +99,163 @@ struct SettingsView: View {
     }
 }
 
+private struct SettingsOverviewView: View {
+    @ObservedObject var store: ExternalProviderStore
+
+    private var updateCount: Int {
+        store.installedPlugins.filter { store.updateInfo(for: $0.id)?.updateAvailable == true }.count
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    OverviewStatCard(title: "Provider", value: "\(store.providers.count)", subtitle: "已安装")
+                    OverviewStatCard(title: "插件", value: "\(store.installedPlugins.count)", subtitle: "安装包")
+                    OverviewStatCard(title: "更新", value: "\(updateCount)", subtitle: "可更新")
+                    OverviewStatCard(title: "状态", value: store.overallStatus.label, subtitle: "整体")
+                }
+
+                HStack {
+                    Text("Provider 安装状态")
+                        .font(.headline)
+                    Spacer()
+                    Button {
+                        Task { await store.updateAllInstalledPlugins() }
+                    } label: {
+                        if store.isInstalling {
+                            ProgressView().scaleEffect(0.55)
+                        } else {
+                            Label("全部更新", systemImage: "arrow.down.circle")
+                        }
+                    }
+                    .disabled(store.isInstalling || store.installedPlugins.isEmpty)
+                }
+
+                if let message = store.installMessage, !message.isEmpty {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(message.hasPrefix("安装失败") || message.contains("失败") ? .red : .secondary)
+                        .lineLimit(2)
+                }
+
+                if store.providers.isEmpty {
+                    EmptyProvidersView()
+                        .frame(minHeight: 300)
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(store.providers) { provider in
+                            SettingsProviderOverviewRow(
+                                provider: provider,
+                                plugin: store.installedPlugin(for: provider),
+                                updateInfo: store.updateInfo(for: provider)
+                            )
+                            Divider()
+                        }
+                    }
+                }
+            }
+            .padding(18)
+        }
+        .task {
+            await store.refreshPluginUpdates()
+        }
+    }
+}
+
+private struct OverviewStatCard: View {
+    let title: String
+    let value: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.title3)
+                .fontWeight(.semibold)
+                .lineLimit(1)
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct SettingsProviderOverviewRow: View {
+    let provider: ExternalProviderRuntime
+    let plugin: InstalledPlugin?
+    let updateInfo: PluginUpdateInfo?
+
+    private var installText: String {
+        if let tag = plugin?.gitTag {
+            return "已安装 \(tag)"
+        }
+        if let version = plugin?.version {
+            return "已安装 \(version)"
+        }
+        return "已安装"
+    }
+
+    private var updateText: String {
+        guard let updateInfo else { return "未检查" }
+        if updateInfo.isChecking { return "检查中" }
+        if let error = updateInfo.errorMessage, !error.isEmpty { return "检查失败" }
+        if updateInfo.updateAvailable, let latest = updateInfo.latestTag { return "可更新 \(latest)" }
+        return "最新"
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: provider.icon)
+                .frame(width: 18)
+                .foregroundColor(provider.status.color)
+                .padding(.top, 3)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(provider.title)
+                        .fontWeight(.semibold)
+                    Text(provider.status.label)
+                        .font(.caption)
+                        .foregroundColor(provider.status.color)
+                }
+                Text(provider.snapshot?.summary ?? provider.errorMessage ?? "无状态摘要")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                HStack(spacing: 10) {
+                    Label(installText, systemImage: "checkmark.circle")
+                    Label(updateText, systemImage: updateInfo?.updateAvailable == true ? "arrow.down.circle" : "checkmark.seal")
+                }
+                .font(.caption2)
+                .foregroundColor(.secondary)
+
+                HStack(spacing: 6) {
+                    Text(provider.baseDirectory.path)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Button {
+                        NSWorkspace.shared.activateFileViewerSelecting([provider.baseDirectory])
+                    } label: {
+                        Label("Finder", systemImage: "folder")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+        }
+        .padding(.vertical, 10)
+    }
+}
+
 private enum SettingsTab: String, CaseIterable, Identifiable {
     case overview
     case installed
@@ -122,48 +278,66 @@ private struct ProviderConfigurationView: View {
     let provider: ExternalProviderRuntime
     @ObservedObject var store: ExternalProviderStore
     @State private var values: [String: String] = [:]
+    @State private var isExpanded = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                Image(systemName: provider.icon)
-                    .frame(width: 18)
-                    .foregroundColor(.accentColor)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(provider.title)
-                        .font(.headline)
-                    Text("Provider 设置")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isExpanded.toggle()
                 }
-                Spacer()
-                Toggle("一级展示", isOn: Binding(
-                    get: { store.isProviderPinned(provider.id) },
-                    set: { store.setProviderPinned(provider.id, pinned: $0) }
-                ))
-                .toggleStyle(.checkbox)
-            }
-
-            ForEach(provider.configuration) { section in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(section.title)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                    ForEach(section.fields) { field in
-                        ConfigurationFieldRow(
-                            field: field,
-                            value: Binding(
-                                get: { values[field.key] ?? field.defaultValue ?? "" },
-                                set: { newValue in
-                                    values[field.key] = newValue
-                                    store.saveConfigurationValue(newValue, field: field, provider: provider)
-                                }
-                            )
-                        )
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .foregroundColor(.secondary)
+                        .frame(width: 12)
+                    Image(systemName: provider.icon)
+                        .frame(width: 18)
+                        .foregroundColor(provider.status.color)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(provider.title)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        Text("Provider 设置")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
+                    Spacer()
+                    Toggle("固定", isOn: Binding(
+                        get: { store.isProviderPinned(provider.id) },
+                        set: { store.setProviderPinned(provider.id, pinned: $0) }
+                    ))
+                    .toggleStyle(.checkbox)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                ForEach(provider.configuration) { section in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(section.title)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        ForEach(section.fields) { field in
+                            ConfigurationFieldRow(
+                                field: field,
+                                value: Binding(
+                                    get: { values[field.key] ?? field.defaultValue ?? "" },
+                                    set: { newValue in
+                                        values[field.key] = newValue
+                                        store.saveConfigurationValue(newValue, field: field, provider: provider)
+                                    }
+                                )
+                            )
+                        }
+                    }
+                    .padding(.leading, 28)
                 }
             }
         }
+        .padding(12)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
         .onAppear {
             values = store.configurationValues(for: provider)
         }

@@ -186,6 +186,39 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         pluginUpdates[pluginId]
     }
 
+    func installedPlugin(for provider: ExternalProviderRuntime) -> InstalledPlugin? {
+        installedPlugins.first { plugin in
+            provider.id == plugin.id || provider.id.hasPrefix("\(plugin.id).")
+        }
+    }
+
+    func updateInfo(for provider: ExternalProviderRuntime) -> PluginUpdateInfo? {
+        guard let plugin = installedPlugin(for: provider) else { return nil }
+        return updateInfo(for: plugin.id)
+    }
+
+    func updateAllInstalledPlugins() async {
+        let plugins = installedPlugins
+        guard !plugins.isEmpty else { return }
+
+        isInstalling = true
+        installMessage = "正在更新全部 Provider"
+        defer { isInstalling = false }
+
+        var failures: [String] = []
+        for plugin in plugins {
+            do {
+                try await fetchAndCheckoutLatestTag(in: plugin.directory)
+            } catch {
+                failures.append("\(plugin.title)：\(error.localizedDescription)")
+            }
+        }
+
+        reload()
+        await refreshPluginUpdates()
+        installMessage = failures.isEmpty ? "已更新全部 Provider" : "部分更新失败：\(failures.joined(separator: "；"))"
+    }
+
     func actionKey(provider: ExternalProviderRuntime, item: ExternalProviderItem, action: ExternalProviderAction) -> String {
         "\(provider.id):\(item.id):\(action.id)"
     }

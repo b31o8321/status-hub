@@ -247,7 +247,7 @@ private struct MarketplacePluginRow: View {
     }
 }
 
-private struct EmptyProvidersView: View {
+struct EmptyProvidersView: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "square.stack.3d.up")

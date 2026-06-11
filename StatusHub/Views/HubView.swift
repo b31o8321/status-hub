@@ -9,19 +9,48 @@ extension Notification.Name {
 
 struct HubView: View {
     @ObservedObject var store: HubStore
+    @State private var selectedPage = HubPage.overview
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+    }
+
+    private var pinnedProviders: [ExternalProviderRuntime] {
+        store.externalProviderStore.pinnedProviders
     }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-            OverviewView(store: store)
+            if !pinnedProviders.isEmpty {
+                Picker("", selection: $selectedPage) {
+                    Text("总览").tag(HubPage.overview)
+                    ForEach(pinnedProviders) { provider in
+                        Text(provider.title).tag(provider.id)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                Divider()
+            }
+
+            if selectedPage == HubPage.overview {
+                OverviewView(store: store)
+            } else if let provider = pinnedProviders.first(where: { $0.id == selectedPage }) {
+                ProviderDetailView(provider: provider, externalStore: store.externalProviderStore)
+            } else {
+                OverviewView(store: store)
+            }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(.ultraThinMaterial)
         .frame(width: 380, height: 520)
+        .onChange(of: pinnedProviders.map(\.id)) { ids in
+            if selectedPage != HubPage.overview && !ids.contains(selectedPage) {
+                selectedPage = HubPage.overview
+            }
+        }
     }
 
     private var header: some View {
@@ -74,6 +103,10 @@ struct HubView: View {
     }
 }
 
+private enum HubPage {
+    static let overview = "overview"
+}
+
 private struct OverviewView: View {
     @ObservedObject var store: HubStore
 
@@ -96,7 +129,7 @@ private struct OverviewView: View {
             }
             .padding(12)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(.ultraThinMaterial)
     }
 }
 
@@ -123,7 +156,7 @@ private struct OverviewHeaderCard: View {
                 .lineLimit(2)
         }
         .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
@@ -151,6 +184,10 @@ private struct ProviderCompactRow: View {
 
     private var links: [ExternalProviderLink] {
         (provider.snapshot?.items ?? []).flatMap { $0.links ?? [] }
+    }
+
+    private var isPinned: Bool {
+        externalStore.isProviderPinned(provider.id)
     }
 
     var body: some View {
@@ -181,6 +218,15 @@ private struct ProviderCompactRow: View {
             Spacer(minLength: 8)
 
             HStack(spacing: 8) {
+                Button {
+                    externalStore.setProviderPinned(provider.id, pinned: !isPinned)
+                } label: {
+                    Image(systemName: isPinned ? "pin.fill" : "pin")
+                        .foregroundColor(isPinned ? .accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help(isPinned ? "取消固定" : "固定到顶部导航")
+
                 if !links.isEmpty {
                     Menu {
                         ForEach(links.prefix(8)) { link in
@@ -226,6 +272,19 @@ private struct ProviderCompactRow: View {
         } else {
             NSWorkspace.shared.open(URL(fileURLWithPath: urlString))
         }
+    }
+}
+
+private struct ProviderDetailView: View {
+    let provider: ExternalProviderRuntime
+    @ObservedObject var externalStore: ExternalProviderStore
+
+    var body: some View {
+        ScrollView {
+            ProviderDetailSection(provider: provider, externalStore: externalStore)
+                .padding(12)
+        }
+        .background(.ultraThinMaterial)
     }
 }
 
@@ -313,7 +372,7 @@ private struct ProviderDetailSection: View {
             }
         }
         .padding(10)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

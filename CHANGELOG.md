@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- Add a settings overview with provider install counts, update status, update-all, and Finder shortcuts.
+- Move provider-owned configuration into collapsible installed-provider sections.
+- Restore first-level pinned provider pages in the menu popover while keeping the overview compact.
+- Use macOS material backgrounds for the menu popover.
+
 ## 0.1.3
 
 - Add provider item actions so providers can expose manual trigger and toggle buttons.

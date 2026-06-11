@@ -26,7 +26,7 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.3` / build `4`.
+Current app version: `0.1.4` / build `5`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
@@ -34,19 +34,25 @@ the main popover stays focused on live status.
 `0.1.3` adds provider-declared actions and links, allowing a provider to expose
 manual trigger buttons, schedule toggles, and recent generated documents without
 custom Hub code.
+`0.1.4` refines the hub UI with a compact translucent overview, first-level
+pages for pinned providers, collapsible provider settings, and a settings
+overview for install status, updates, and local directories.
 
 ## UI
 
 The menu bar popover opens on **总览** by default:
 
-- 总览: overall hub status and provider summaries.
-- Pinned providers: providers marked as **一级展示** in Settings appear beside
-  总览 as first-level pages.
+- 总览: overall hub status and compact provider summaries.
+- Fixed providers: providers marked as fixed in Settings or the overview appear
+  beside 总览 as first-level pages with detailed status and actions.
 
 The settings window is also hub-oriented:
 
-- 总览: current hub status and local data directories.
-- 插件: installed providers, marketplace, and GitHub plugin installation.
+- 总览: installed provider count, install status, update status, and local
+  provider directories with Finder shortcuts.
+- 已安装: provider-owned configuration forms.
+- 市场: searchable marketplace.
+- GitHub: plugin installation from repository URLs.
 
 ## Marketplace
 
