@@ -3,7 +3,7 @@ import Foundation
 struct ExternalProviderManifest: Codable, Identifiable, Equatable {
     let id: String
     let title: String
-    let icon: String?
+    let icon: String
     let statusFile: String
     let configFile: String?
     let command: String?
@@ -14,7 +14,7 @@ struct ExternalProviderManifest: Codable, Identifiable, Equatable {
     init(
         id: String,
         title: String,
-        icon: String?,
+        icon: String,
         statusFile: String,
         configFile: String? = nil,
         command: String? = nil,
@@ -141,7 +141,7 @@ struct ExternalProviderRuntime: Identifiable, Equatable {
     }
 
     var title: String { manifest.title }
-    var icon: String { manifest.icon ?? "square.stack.3d.up" }
+    var icon: String { manifest.icon }
     var command: String? { manifest.command }
     var configFile: String? { manifest.configFile }
     var configuration: [ExternalProviderConfigSection] { manifest.configuration ?? [] }

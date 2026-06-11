@@ -28,9 +28,15 @@ struct HubView: View {
             Divider()
             if !pinnedProviders.isEmpty {
                 Picker("", selection: $selectedPage) {
-                    Text("总览").tag(HubPage.overview)
+                    Label("总览", systemImage: "square.grid.2x2")
+                        .labelStyle(.iconOnly)
+                        .tag(HubPage.overview)
+                        .help("总览")
                     ForEach(pinnedProviders) { provider in
-                        Text(provider.title).tag(provider.id)
+                        Label(provider.title, systemImage: provider.icon)
+                            .labelStyle(.iconOnly)
+                            .tag(provider.id)
+                            .help(provider.title)
                     }
                 }
                 .pickerStyle(.segmented)

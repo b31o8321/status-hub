@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.11
+
+- Require provider manifests to declare an icon and render pinned provider
+  navigation as compact icon-only tabs.
+
 ## 0.1.10
 
 - Cap provider output links in the compact overview menu and job cards.

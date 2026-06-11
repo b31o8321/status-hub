@@ -26,7 +26,7 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.10` / build `11`.
+Current app version: `0.1.11` / build `12`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
@@ -45,6 +45,8 @@ shortcut instead.
 item's status.
 `0.1.10` caps provider output links in compact menus and job cards so recent
 documents cannot stretch the status surface.
+`0.1.11` requires each provider to declare an icon and uses icon-only pinned
+provider navigation.
 
 ## UI
 
@@ -125,6 +127,9 @@ Plugin manifest example:
   ]
 }
 ```
+
+`providers[].icon` is required and must be a valid SF Symbol name. Status Hub
+uses it in the main navigation, overview rows, settings rows, and detail pages.
 
 If `command` is present, Status Hub starts that command and passes:
 
