@@ -625,7 +625,9 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
     private func fetchAndCheckoutLatestTag(in target: URL) async throws {
         _ = try await runGit(arguments: ["-C", target.path, "fetch", "--tags", "--force"])
         guard let latestTag = try await latestLocalTag(in: target) else { return }
-        _ = try await runGit(arguments: ["-C", target.path, "checkout", "--quiet", latestTag])
+        _ = try await runGit(arguments: ["-C", target.path, "reset", "--hard", "HEAD"])
+        _ = try await runGit(arguments: ["-C", target.path, "clean", "-fd", "-e", "runtime", "-e", "runtime/**"])
+        _ = try await runGit(arguments: ["-C", target.path, "checkout", "--force", "--quiet", latestTag])
     }
 
     private func preserveRuntimeDirectory(for pluginDirectory: URL) throws -> URL? {

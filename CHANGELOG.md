@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.14
+
+- Make plugin updates recover from dirty plugin worktrees.
+- Preserve provider `runtime/` data while force-refreshing plugin code.
+
 ## 0.1.13
 
 - Add provider-owned external configuration helpers for complex settings flows.
