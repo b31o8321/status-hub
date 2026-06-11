@@ -9,6 +9,7 @@ Initial Status Hub release.
 - Add the first marketplace page with the general-purpose Mac System provider.
 - Support local provider registration through JSON manifests.
 - Support provider plugin installation from GitHub repositories.
+- Add timeout handling and partial-clone cleanup for plugin installation.
 - Start provider commands declared by plugin manifests.
 - Read provider status snapshots from JSON files.
 - Render optional provider item values and details.

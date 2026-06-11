@@ -100,9 +100,15 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             let target = pluginsDirectory.appendingPathComponent(pluginDirectoryName(for: source), isDirectory: true)
 
             if fileManager.fileExists(atPath: target.path) {
-                try await runGit(arguments: ["-C", target.path, "pull", "--ff-only"])
+                let manifestURL = target.appendingPathComponent("statushub-plugin.json")
+                if fileManager.fileExists(atPath: manifestURL.path) {
+                    try await runGit(arguments: ["-C", target.path, "pull", "--ff-only"])
+                } else {
+                    try fileManager.removeItem(at: target)
+                    try await clonePlugin(from: source, to: target)
+                }
             } else {
-                try await runGit(arguments: ["clone", source, target.path])
+                try await clonePlugin(from: source, to: target)
             }
 
             let manifestURL = target.appendingPathComponent("statushub-plugin.json")
@@ -269,7 +275,32 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         return rawName.unicodeScalars.map { allowed.contains($0) ? String(Character($0)) : "-" }.joined()
     }
 
-    private func runGit(arguments: [String]) async throws {
+    private func clonePlugin(from source: String, to target: URL) async throws {
+        do {
+            try await runGit(arguments: ["clone", "--depth", "1", source, target.path])
+        } catch {
+            guard let fallback = githubSSHURL(for: source), fallback != source else {
+                throw error
+            }
+            if fileManager.fileExists(atPath: target.path) {
+                try fileManager.removeItem(at: target)
+            }
+            try await runGit(arguments: ["clone", "--depth", "1", fallback, target.path])
+        }
+    }
+
+    private func githubSSHURL(for source: String) -> String? {
+        guard let components = URLComponents(string: source),
+              components.scheme == "https",
+              components.host == "github.com" else {
+            return nil
+        }
+        let path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !path.isEmpty else { return nil }
+        return "git@github.com:\(path)"
+    }
+
+    private func runGit(arguments: [String], timeoutSeconds: TimeInterval = 45) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -277,19 +308,34 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = pipe
+            process.environment = ProcessInfo.processInfo.environment.merging([
+                "GIT_TERMINAL_PROMPT": "0",
+                "GIT_SSH_COMMAND": "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+            ]) { _, new in new }
+
+            let state = GitRunState(continuation: continuation)
+
             process.terminationHandler = { process in
                 if process.terminationStatus == 0 {
-                    continuation.resume()
+                    state.finish(.success(()))
                 } else {
                     let data = pipe.fileHandleForReading.readDataToEndOfFile()
                     let output = String(data: data, encoding: .utf8) ?? "git failed"
-                    continuation.resume(throwing: PluginInstallError.gitFailed(output))
+                    state.finish(.failure(PluginInstallError.gitFailed(output)))
                 }
             }
             do {
                 try process.run()
+                let command = (["git"] + arguments).joined(separator: " ")
+                let task = DispatchWorkItem {
+                    guard process.isRunning else { return }
+                    process.terminate()
+                    state.finish(.failure(PluginInstallError.gitTimedOut(command)))
+                }
+                state.timeoutTask = task
+                DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: task)
             } catch {
-                continuation.resume(throwing: error)
+                state.finish(.failure(error))
             }
         }
     }
@@ -313,9 +359,39 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
     }
 }
 
+private final class GitRunState {
+    private let lock = NSLock()
+    private var didFinish = false
+    private let continuation: CheckedContinuation<Void, Error>
+    var timeoutTask: DispatchWorkItem?
+
+    init(continuation: CheckedContinuation<Void, Error>) {
+        self.continuation = continuation
+    }
+
+    func finish(_ result: Result<Void, Error>) {
+        lock.lock()
+        if didFinish {
+            lock.unlock()
+            return
+        }
+        didFinish = true
+        lock.unlock()
+
+        timeoutTask?.cancel()
+        switch result {
+        case .success:
+            continuation.resume()
+        case .failure(let error):
+            continuation.resume(throwing: error)
+        }
+    }
+}
+
 private enum PluginInstallError: LocalizedError {
     case missingManifest
     case gitFailed(String)
+    case gitTimedOut(String)
 
     var errorDescription: String? {
         switch self {
@@ -323,6 +399,8 @@ private enum PluginInstallError: LocalizedError {
             return "插件仓库缺少 statushub-plugin.json"
         case .gitFailed(let output):
             return output
+        case .gitTimedOut(let command):
+            return "Git 命令超时：\(command)"
         }
     }
 }

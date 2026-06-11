@@ -147,7 +147,7 @@ private struct MarketplacePlugin: Identifiable {
             title: "Mac System",
             subtitle: "CPU、内存、网络、电池、磁盘和温度状态",
             icon: "desktopcomputer",
-            repositoryURL: "https://github.com/b31o8321/status-hub-mac-system-provider.git"
+            repositoryURL: "git@github.com:b31o8321/status-hub-mac-system-provider.git"
         )
     ]
 }
