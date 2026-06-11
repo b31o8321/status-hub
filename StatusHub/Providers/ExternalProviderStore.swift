@@ -120,6 +120,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         do {
             try fileManager.createDirectory(at: pluginsDirectory, withIntermediateDirectories: true)
             let target = pluginsDirectory.appendingPathComponent(pluginDirectoryName(for: source), isDirectory: true)
+            let preservedRuntime = try preserveRuntimeDirectory(for: target)
 
             if fileManager.fileExists(atPath: target.path) {
                 let manifestURL = target.appendingPathComponent("statushub-plugin.json")
@@ -132,6 +133,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             } else {
                 try await clonePlugin(from: source, to: target)
             }
+            try restoreRuntimeDirectory(preservedRuntime, to: target)
 
             let manifestURL = target.appendingPathComponent("statushub-plugin.json")
             guard fileManager.fileExists(atPath: manifestURL.path) else {
@@ -208,7 +210,9 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         var failures: [String] = []
         for plugin in plugins {
             do {
+                let preservedRuntime = try preserveRuntimeDirectory(for: plugin.directory)
                 try await fetchAndCheckoutLatestTag(in: plugin.directory)
+                try restoreRuntimeDirectory(preservedRuntime, to: plugin.directory)
             } catch {
                 failures.append("\(plugin.title)：\(error.localizedDescription)")
             }
@@ -569,6 +573,28 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         _ = try await runGit(arguments: ["-C", target.path, "fetch", "--tags", "--force"])
         guard let latestTag = try await latestLocalTag(in: target) else { return }
         _ = try await runGit(arguments: ["-C", target.path, "checkout", "--quiet", latestTag])
+    }
+
+    private func preserveRuntimeDirectory(for pluginDirectory: URL) throws -> URL? {
+        let runtimeURL = pluginDirectory.appendingPathComponent("runtime", isDirectory: true)
+        guard fileManager.fileExists(atPath: runtimeURL.path) else { return nil }
+        let backupParent = fileManager.temporaryDirectory
+            .appendingPathComponent("statushub-runtime-\(UUID().uuidString)", isDirectory: true)
+        let backupURL = backupParent.appendingPathComponent("runtime", isDirectory: true)
+        try fileManager.createDirectory(at: backupParent, withIntermediateDirectories: true)
+        try fileManager.copyItem(at: runtimeURL, to: backupURL)
+        return backupURL
+    }
+
+    private func restoreRuntimeDirectory(_ backupURL: URL?, to pluginDirectory: URL) throws {
+        guard let backupURL else { return }
+        let runtimeURL = pluginDirectory.appendingPathComponent("runtime", isDirectory: true)
+        if fileManager.fileExists(atPath: runtimeURL.path) {
+            try fileManager.removeItem(at: runtimeURL)
+        }
+        try fileManager.createDirectory(at: pluginDirectory, withIntermediateDirectories: true)
+        try fileManager.copyItem(at: backupURL, to: runtimeURL)
+        try? fileManager.removeItem(at: backupURL.deletingLastPathComponent())
     }
 
     private func githubSSHURL(for source: String) -> String? {

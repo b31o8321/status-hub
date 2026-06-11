@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7
+
+- Preserve provider `runtime/` data, including local configuration, while installing or updating GitHub plugins.
+
 ## 0.1.4
 
 - Add a settings overview with provider install counts, update status, update-all, and Finder shortcuts.

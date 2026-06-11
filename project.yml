@@ -33,8 +33,8 @@ targets:
         CFBundleIdentifier: com.status-hub
         NSPrincipalClass: NSApplication
         CFBundleExecutable: "$(EXECUTABLE_NAME)"
-        CFBundleVersion: "5"
-        CFBundleShortVersionString: "0.1.4"
+        CFBundleVersion: "8"
+        CFBundleShortVersionString: "0.1.7"
         CFBundlePackageType: APPL
     settings:
       base:
