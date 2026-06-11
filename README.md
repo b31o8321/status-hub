@@ -28,6 +28,22 @@ StatusHub
         ~/Library/Application Support/StatusHub/plugins/*/statushub-plugin.json
 ```
 
+## UI
+
+The menu bar popover opens on the **总览** tab by default. Provider-specific
+views live behind their own tabs:
+
+- 总览: overall hub status and provider summaries.
+- 自动化: Codex automation runs and artifacts.
+- GitLab: GitLab pipeline rows.
+- 外部: external providers and plugin installation.
+
+The settings window is also hub-oriented:
+
+- 总览: current hub status and local data directories.
+- GitLab: GitLab connection and repository selection.
+- 插件: install or inspect GitHub provider plugins.
+
 Provider contract:
 
 ```swift

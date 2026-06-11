@@ -84,12 +84,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             existing.makeKeyAndOrderFront(nil)
             return
         }
-        let view = SettingsView(store: gitLabProvider.store)
+        let view = SettingsView(store: hubStore)
         let hosting = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hosting)
         window.title = "Status Hub 设置"
         window.styleMask = [.titled, .closable, .resizable]
-        window.setContentSize(NSSize(width: 420, height: 480))
+        window.setContentSize(NSSize(width: 560, height: 620))
         window.center()
         window.isReleasedWhenClosed = false
         window.level = .floating
@@ -107,7 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupPopover() {
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 320, height: 400)
+        popover.contentSize = NSSize(width: 380, height: 520)
         popover.behavior = .applicationDefined
         popover.contentViewController = NSHostingController(
             rootView: HubView(store: hubStore)

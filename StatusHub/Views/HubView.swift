@@ -9,7 +9,7 @@ extension Notification.Name {
 
 struct HubView: View {
     @ObservedObject var store: HubStore
-    @State private var selectedTab: HubTab = .automation
+    @State private var selectedTab: HubTab = .all
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
@@ -95,19 +95,19 @@ struct HubView: View {
 }
 
 private enum HubTab: String, CaseIterable, Identifiable {
+    case all
     case automation
     case gitlab
     case external
-    case all
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .all: return "总览"
         case .automation: return "自动化"
         case .gitlab: return "GitLab"
         case .external: return "外部"
-        case .all: return "全部"
         }
     }
 }
