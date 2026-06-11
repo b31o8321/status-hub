@@ -213,9 +213,12 @@ private struct SettingsProviderOverviewRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: provider.icon)
-                .frame(width: 18)
-                .foregroundColor(provider.status.color)
+            ProviderIconView(
+                icon: provider.icon,
+                baseDirectory: provider.baseDirectory,
+                status: provider.status,
+                size: 18
+            )
                 .padding(.top, 3)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -291,9 +294,12 @@ private struct ProviderConfigurationView: View {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .foregroundColor(.secondary)
                         .frame(width: 12)
-                    Image(systemName: provider.icon)
-                        .frame(width: 18)
-                        .foregroundColor(provider.status.color)
+                    ProviderIconView(
+                        icon: provider.icon,
+                        baseDirectory: provider.baseDirectory,
+                        status: provider.status,
+                        size: 18
+                    )
                     VStack(alignment: .leading, spacing: 2) {
                         Text(provider.title)
                             .font(.headline)

@@ -13,6 +13,30 @@ The app is responsible for:
 - Reading provider status JSON files.
 - Showing current jobs, history summaries, artifacts, notes, and quick links.
 
+## Install
+
+Download `StatusHub-<version>.dmg` from GitHub Actions artifacts or a tagged
+release, open it, and drag `StatusHub.app` to `Applications`.
+
+Status Hub is currently unsigned and not notarized. After copying the app, run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/StatusHub.app
+```
+
+If macOS reports a permission error:
+
+```bash
+sudo xattr -dr com.apple.quarantine /Applications/StatusHub.app
+```
+
+The DMG also includes `安装说明.md` with the same Gatekeeper unlock steps.
+
+## Provider Standard
+
+Provider implementation rules are documented in
+[docs/provider-standard.md](docs/provider-standard.md).
+
 ## Architecture
 
 ```text
@@ -26,7 +50,7 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.11` / build `12`.
+Current app version: `0.1.12` / build `13`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
@@ -47,6 +71,8 @@ item's status.
 documents cannot stretch the status surface.
 `0.1.11` requires each provider to declare an icon and uses icon-only pinned
 provider navigation.
+`0.1.12` adds unsigned DMG packaging docs, provider standard docs, and
+plugin-relative image icons for providers.
 
 ## UI
 
@@ -74,24 +100,6 @@ Current marketplace plugins:
 
 - Mac System: CPU, memory, network, battery, disk, and temperature status.
 
-Provider contract:
-
-```swift
-@MainActor
-protocol StatusProvider: ObservableObject {
-    var providerId: String { get }
-    var providerTitle: String { get }
-    var providerIcon: String { get }
-    var overallStatus: HubStatus { get }
-
-    func start()
-    func refresh() async
-}
-```
-
-The app process only hosts the hub. Provider implementations should use the JSON
-registration or GitHub plugin protocol below.
-
 ## GitHub Plugin Installation
 
 Open Status Hub Settings, switch to **插件 > GitHub**, paste a GitHub URL, and
@@ -101,7 +109,8 @@ click install. The app clones or pulls the repository under:
 ~/Library/Application Support/StatusHub/plugins/
 ```
 
-Each plugin repository must provide this file at its root:
+Each plugin repository must provide this file at its root. See
+[docs/provider-standard.md](docs/provider-standard.md) for the complete schema.
 
 ```text
 statushub-plugin.json
@@ -128,91 +137,22 @@ Plugin manifest example:
 }
 ```
 
-`providers[].icon` is required and must be a valid SF Symbol name. Status Hub
-uses it in the main navigation, overview rows, settings rows, and detail pages.
+`providers[].icon` is required. It may be a valid SF Symbol name or a
+plugin-relative image path such as `assets/gitlab-icon.svg`.
 
 If `command` is present, Status Hub starts that command and passes:
 
 - `STATUS_HUB_PROVIDER_ID`
 - `STATUS_HUB_STATUS_FILE`
-- `STATUS_HUB_CONFIG_FILE` and `STATUS_HUB_DATA_DIR` are planned for configurable
-  providers.
+- `STATUS_HUB_CONFIG_FILE`
+- `STATUS_HUB_DATA_DIR`
 
 The provider command should keep running and write the status file atomically.
 Status Hub does not load plugin code into the app process; plugins communicate by
 status files.
 
-## External Provider Registration
-
-External programs register themselves by writing a manifest file to:
-
-```text
-~/Library/Application Support/StatusHub/providers/<provider-id>.json
-```
-
-Manifest example:
-
-```json
-{
-  "id": "local-example",
-  "title": "Local Example",
-  "icon": "square.stack.3d.up",
-  "statusFile": "~/Library/Application Support/LocalExample/status.json"
-}
-```
-
-The external program then keeps `statusFile` up to date.
-
-Status file example:
-
-```json
-{
-  "status": "attention",
-  "summary": "2 个任务需要确认，1 个正在运行",
-  "updatedAt": "2026-06-11T12:30:00+08:00",
-  "items": [
-    {
-      "id": "daily-job",
-      "title": "每日任务",
-      "subtitle": "等待人工确认",
-      "status": "attention",
-      "url": "https://example.com/artifacts/daily-job",
-      "value": "2",
-      "detail": {
-        "owner": "team"
-      },
-      "actions": [
-        {
-          "id": "run",
-          "title": "触发",
-          "command": "bin/example-provider",
-          "arguments": ["run"],
-          "workingDirectory": "."
-        }
-      ],
-      "links": [
-        {
-          "id": "latest-report",
-          "title": "最近报告",
-          "url": "https://example.com/report"
-        }
-      ]
-    }
-  ]
-}
-```
-
-Supported provider statuses:
-
-- `idle`
-- `success`
-- `running`
-- `attention`
-- `failed`
-- `unknown`
-
-Recommended rule: external providers should write status files atomically, for
-example write to a temp file and rename it to the target path.
+External provider registration and status file details are covered in
+[docs/provider-standard.md](docs/provider-standard.md).
 
 ## Build
 

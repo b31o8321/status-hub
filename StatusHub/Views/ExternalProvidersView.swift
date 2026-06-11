@@ -300,9 +300,12 @@ private struct ExternalProviderRow: View {
                 .foregroundColor(.secondary)
                 .frame(width: 10)
 
-                Image(systemName: provider.icon)
-                    .frame(width: 16)
-                    .foregroundColor(provider.status.color)
+                ProviderIconView(
+                    icon: provider.icon,
+                    baseDirectory: provider.baseDirectory,
+                    status: provider.status,
+                    size: 16
+                )
                 Text(provider.title)
                     .fontWeight(.medium)
                     .lineLimit(1)

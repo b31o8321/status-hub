@@ -33,8 +33,11 @@ struct HubView: View {
                         .tag(HubPage.overview)
                         .help("总览")
                     ForEach(pinnedProviders) { provider in
-                        Label(provider.title, systemImage: provider.icon)
-                            .labelStyle(.iconOnly)
+                        ProviderIconView(
+                            icon: provider.icon,
+                            baseDirectory: provider.baseDirectory,
+                            size: 16
+                        )
                             .tag(provider.id)
                             .help(provider.title)
                     }
@@ -189,9 +192,12 @@ private struct ProviderCompactRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: provider.icon)
-                .frame(width: 18)
-                .foregroundColor(provider.status.color)
+            ProviderIconView(
+                icon: provider.icon,
+                baseDirectory: provider.baseDirectory,
+                status: provider.status,
+                size: 18
+            )
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -307,14 +313,18 @@ private struct ProviderSummaryRow: View {
     let subtitle: String
     let status: HubStatus
     let icon: String
+    let baseDirectory: URL
     var isPinned: Bool? = nil
     var togglePinned: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: icon)
-                .frame(width: 18)
-                .foregroundColor(status.color)
+            ProviderIconView(
+                icon: icon,
+                baseDirectory: baseDirectory,
+                status: status,
+                size: 18
+            )
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .fontWeight(.medium)
@@ -350,6 +360,7 @@ private struct ProviderDetailSection: View {
                 subtitle: provider.snapshot?.summary ?? provider.errorMessage ?? "无状态摘要",
                 status: provider.status,
                 icon: provider.icon,
+                baseDirectory: provider.baseDirectory,
                 isPinned: true,
                 togglePinned: {
                     externalStore.setProviderPinned(provider.id, pinned: false)

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1830282AF54130D8B7414F2F /* ProviderIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1F4BB71A397BACCE4F1D4C /* ProviderIconView.swift */; };
 		21663C8A26193AA605AD137D /* StatusHubApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 942621F08434260724466DB4 /* StatusHubApp.swift */; };
 		535A79ED38AE9AFC3DA1DB45 /* ExternalProvidersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C905A47FAAF1300690CF6063 /* ExternalProvidersView.swift */; };
 		5BCA9B5255EC081844208798 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 369E811E0C8C3B915C30CEC6 /* SettingsView.swift */; };
@@ -44,6 +45,7 @@
 		A78504212EF5735EDFD71252 /* StatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusProvider.swift; sourceTree = "<group>"; };
 		C8BF64F64E3966217E45136C /* ExternalProviderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalProviderModels.swift; sourceTree = "<group>"; };
 		C905A47FAAF1300690CF6063 /* ExternalProvidersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalProvidersView.swift; sourceTree = "<group>"; };
+		DA1F4BB71A397BACCE4F1D4C /* ProviderIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderIconView.swift; sourceTree = "<group>"; };
 		EB46D69E5CDA4AC7508A963B /* StatusHubTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StatusHubTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EF4C42BEDA65C5384974460A /* StatusHub.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StatusHub.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F291CCE895A0EB7796219052 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -77,6 +79,7 @@
 			children = (
 				C905A47FAAF1300690CF6063 /* ExternalProvidersView.swift */,
 				15C652F1D7BB334C61DE3BDE /* HubView.swift */,
+				DA1F4BB71A397BACCE4F1D4C /* ProviderIconView.swift */,
 				369E811E0C8C3B915C30CEC6 /* SettingsView.swift */,
 			);
 			path = Views;
@@ -212,6 +215,7 @@
 				93330097FAB0AAB36CC51D63 /* HubStatus.swift in Sources */,
 				A36F1B4E0BA0191CAA76FB69 /* HubStore.swift in Sources */,
 				932BF3299AF492B3AB475029 /* HubView.swift in Sources */,
+				1830282AF54130D8B7414F2F /* ProviderIconView.swift in Sources */,
 				5BCA9B5255EC081844208798 /* SettingsView.swift in Sources */,
 				21663C8A26193AA605AD137D /* StatusHubApp.swift in Sources */,
 				F85DB4FB8528924F9354F052 /* StatusProvider.swift in Sources */,

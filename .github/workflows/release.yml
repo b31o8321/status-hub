@@ -1,0 +1,48 @@
+name: Build DMG
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Build DMG
+        run: |
+          chmod +x scripts/package_dmg.sh
+          scripts/package_dmg.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StatusHub-DMG
+          path: build/release/*.dmg
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" build/release/*.dmg --clobber
+          else
+            gh release create "$tag" build/release/*.dmg \
+              --title "StatusHub ${tag}" \
+              --notes "Unsigned macOS build. See 安装说明.md inside the DMG or README.md for Gatekeeper unlock steps."
+          fi

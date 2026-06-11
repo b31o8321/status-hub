@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.12
+
+- Add GitHub Actions DMG packaging with unsigned-app install instructions.
+- Add provider implementation standard documentation.
+- Support provider icons from plugin-relative image paths such as SVG files.
+
 ## 0.1.11
 
 - Require provider manifests to declare an icon and render pinned provider
