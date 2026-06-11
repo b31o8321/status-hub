@@ -71,14 +71,6 @@ struct HubView: View {
             }
             Spacer()
             Button(action: {
-                NotificationCenter.default.post(name: .refreshRequested, object: nil)
-            }) {
-                Image(systemName: "arrow.clockwise")
-            }
-            .buttonStyle(.plain)
-            .help("刷新")
-
-            Button(action: {
                 NotificationCenter.default.post(name: .openSettings, object: nil)
             }) {
                 Image(systemName: "gearshape")
@@ -414,7 +406,7 @@ private struct ProviderItemCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(links.prefix(3)) { link in
                         Link(destination: URL(string: link.url) ?? URL(fileURLWithPath: link.url)) {
-                            Label(link.title, systemImage: "doc.text")
+                            Label("最新文档：\(link.title)", systemImage: "doc.text")
                                 .font(.caption)
                                 .lineLimit(1)
                         }
