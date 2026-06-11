@@ -26,11 +26,14 @@ StatusHub
 
 ## Version
 
-Current app version: `0.1.2` / build `3`.
+Current app version: `0.1.3` / build `4`.
 
 `0.1.2` keeps the app as the menu-bar shell, provider installer, provider
 process manager, and status renderer. Provider management lives in Settings so
 the main popover stays focused on live status.
+`0.1.3` adds provider-declared actions and links, allowing a provider to expose
+manual trigger buttons, schedule toggles, and recent generated documents without
+custom Hub code.
 
 ## UI
 
@@ -158,7 +161,23 @@ Status file example:
       "value": "2",
       "detail": {
         "owner": "team"
-      }
+      },
+      "actions": [
+        {
+          "id": "run",
+          "title": "触发",
+          "command": "bin/example-provider",
+          "arguments": ["run"],
+          "workingDirectory": "."
+        }
+      ],
+      "links": [
+        {
+          "id": "latest-report",
+          "title": "最近报告",
+          "url": "https://example.com/report"
+        }
+      ]
     }
   ]
 }

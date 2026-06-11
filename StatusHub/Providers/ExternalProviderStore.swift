@@ -10,6 +10,7 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
     @Published private(set) var installedPlugins: [InstalledPlugin] = []
     @Published private(set) var pluginUpdates: [String: PluginUpdateInfo] = [:]
     @Published private(set) var pinnedProviderIds: Set<String>
+    @Published private(set) var runningActionIds: Set<String> = []
     @Published var errorMessage: String?
     @Published var installMessage: String?
     @Published var isInstalling = false
@@ -185,6 +186,91 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         pluginUpdates[pluginId]
     }
 
+    func actionKey(provider: ExternalProviderRuntime, item: ExternalProviderItem, action: ExternalProviderAction) -> String {
+        "\(provider.id):\(item.id):\(action.id)"
+    }
+
+    func isActionRunning(provider: ExternalProviderRuntime, item: ExternalProviderItem, action: ExternalProviderAction) -> Bool {
+        runningActionIds.contains(actionKey(provider: provider, item: item, action: action))
+    }
+
+    func runAction(_ action: ExternalProviderAction, for item: ExternalProviderItem, provider: ExternalProviderRuntime) {
+        let key = actionKey(provider: provider, item: item, action: action)
+        guard !runningActionIds.contains(key) else { return }
+
+        let commandURL = expandPath(action.command, baseDirectory: provider.baseDirectory)
+        let workingDirectory = action.workingDirectory
+            .map { expandPath($0, baseDirectory: provider.baseDirectory) }
+            ?? provider.baseDirectory
+        let environment = ProcessInfo.processInfo.environment.merging([
+            "STATUS_HUB_PROVIDER_ID": provider.id,
+            "STATUS_HUB_ITEM_ID": item.id,
+            "STATUS_HUB_ACTION_ID": action.id,
+            "STATUS_HUB_ACTION_TITLE": action.title
+        ]) { _, new in new }
+        let actionEnvironment: [String: String]
+        if let configURL = configURL(for: provider) {
+            actionEnvironment = environment.merging(["STATUS_HUB_CONFIG_FILE": configURL.path]) { _, new in new }
+        } else {
+            actionEnvironment = environment
+        }
+
+        runningActionIds.insert(key)
+        Task {
+            do {
+                try await Self.runProcess(
+                    executableURL: commandURL,
+                    arguments: action.arguments ?? [],
+                    workingDirectory: workingDirectory,
+                    environment: actionEnvironment
+                )
+                await MainActor.run {
+                    self.errorMessage = nil
+                    self.reload()
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "执行 \(action.title) 失败：\(error.localizedDescription)"
+                }
+            }
+            await MainActor.run {
+                self.runningActionIds.remove(key)
+                self.reload()
+            }
+        }
+    }
+
+    func configurationValues(for provider: ExternalProviderRuntime) -> [String: String] {
+        var values: [String: String] = [:]
+        for section in provider.configuration {
+            for field in section.fields {
+                if let defaultValue = field.defaultValue {
+                    values[field.key] = defaultValue
+                }
+            }
+        }
+        guard let configURL = configURL(for: provider),
+              let object = readJSONObject(from: configURL) else {
+            return values
+        }
+        for section in provider.configuration {
+            for field in section.fields {
+                if let value = valueString(in: object, keyPath: field.key) {
+                    values[field.key] = value
+                }
+            }
+        }
+        return values
+    }
+
+    func saveConfigurationValue(_ value: String, field: ExternalProviderConfigField, provider: ExternalProviderRuntime) {
+        guard let configURL = configURL(for: provider) else { return }
+        var object = readJSONObject(from: configURL) ?? [:]
+        setValue(parsedConfigValue(value, field: field), in: &object, keyPath: field.key)
+        writeJSONObject(object, to: configURL)
+        restart(provider)
+    }
+
     private func loadLocalProviders() -> [ExternalProviderRuntime] {
         guard let files = try? fileManager.contentsOfDirectory(
             at: providerDirectory,
@@ -259,9 +345,11 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             title: provider.title,
             icon: provider.icon,
             statusFile: provider.statusFile,
+            configFile: provider.configFile,
             command: provider.command,
             arguments: provider.arguments,
-            workingDirectory: provider.workingDirectory
+            workingDirectory: provider.workingDirectory,
+            configuration: provider.configuration
         )
     }
 
@@ -310,6 +398,9 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             "STATUS_HUB_PROVIDER_ID": provider.id,
             "STATUS_HUB_STATUS_FILE": expandPath(provider.manifest.statusFile, baseDirectory: provider.baseDirectory).path
         ]) { _, new in new }
+        if let configURL = configURL(for: provider) {
+            process.environment?["STATUS_HUB_CONFIG_FILE"] = configURL.path
+        }
 
         do {
             terminateStaleCommand(at: commandURL)
@@ -339,6 +430,82 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
             return URL(fileURLWithPath: path)
         }
         return baseDirectory.appendingPathComponent(path)
+    }
+
+    private func configURL(for provider: ExternalProviderRuntime) -> URL? {
+        guard let configFile = provider.configFile else { return nil }
+        return expandPath(configFile, baseDirectory: provider.baseDirectory)
+    }
+
+    private func restart(_ provider: ExternalProviderRuntime) {
+        if let process = processes[provider.id] {
+            process.terminate()
+            processes.removeValue(forKey: provider.id)
+        }
+        startCommand(for: provider)
+        reload()
+    }
+
+    private func readJSONObject(from url: URL) -> [String: Any]? {
+        guard let data = try? Data(contentsOf: url),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return object
+    }
+
+    private func writeJSONObject(_ object: [String: Any], to url: URL) {
+        do {
+            try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+            try data.write(to: url, options: [.atomic])
+        } catch {
+            errorMessage = "保存配置失败：\(error.localizedDescription)"
+        }
+    }
+
+    private func valueString(in object: [String: Any], keyPath: String) -> String? {
+        guard let value = value(in: object, keyPath: keyPath) else { return nil }
+        if let bool = value as? Bool { return bool ? "true" : "false" }
+        if let array = value as? [Any] { return array.map { "\($0)" }.joined(separator: ",") }
+        return "\(value)"
+    }
+
+    private func value(in object: [String: Any], keyPath: String) -> Any? {
+        let parts = keyPath.split(separator: ".").map(String.init)
+        var current: Any = object
+        for part in parts {
+            guard let dict = current as? [String: Any],
+                  let next = dict[part] else { return nil }
+            current = next
+        }
+        return current
+    }
+
+    private func setValue(_ value: Any, in object: inout [String: Any], keyPath: String) {
+        var parts = keyPath.split(separator: ".").map(String.init)
+        guard let first = parts.first else { return }
+        parts.removeFirst()
+        if parts.isEmpty {
+            object[first] = value
+            return
+        }
+        var child = object[first] as? [String: Any] ?? [:]
+        setValue(value, in: &child, keyPath: parts.joined(separator: "."))
+        object[first] = child
+    }
+
+    private func parsedConfigValue(_ value: String, field: ExternalProviderConfigField) -> Any {
+        switch field.type {
+        case "toggle":
+            return value == "true"
+        case "number":
+            return Double(value) ?? 0
+        case "multiselect":
+            return value.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        default:
+            return value
+        }
     }
 
     private func pluginDirectoryName(for sourceURL: String) -> String {
@@ -450,6 +617,39 @@ final class ExternalProviderStore: ObservableObject, StatusProvider {
         }
     }
 
+    private nonisolated static func runProcess(
+        executableURL: URL,
+        arguments: [String],
+        workingDirectory: URL,
+        environment: [String: String]
+    ) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let process = Process()
+            process.executableURL = executableURL
+            process.arguments = arguments
+            process.currentDirectoryURL = workingDirectory
+            process.environment = environment
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = pipe
+            let state = ProcessRunState(continuation: continuation, pipe: pipe)
+            process.terminationHandler = { process in
+                if process.terminationStatus == 0 {
+                    state.finish(.success(()))
+                } else {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: data, encoding: .utf8) ?? "process failed"
+                    state.finish(.failure(PluginInstallError.processFailed(output)))
+                }
+            }
+            do {
+                try process.run()
+            } catch {
+                state.finish(.failure(error))
+            }
+        }
+    }
+
     private func readGitOrigin(from directory: URL) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -523,6 +723,7 @@ private enum PluginInstallError: LocalizedError {
     case missingManifest
     case gitFailed(String)
     case gitTimedOut(String)
+    case processFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -532,6 +733,38 @@ private enum PluginInstallError: LocalizedError {
             return output
         case .gitTimedOut(let command):
             return "Git 命令超时：\(command)"
+        case .processFailed(let output):
+            return output
+        }
+    }
+}
+
+private final class ProcessRunState {
+    private let lock = NSLock()
+    private var didFinish = false
+    private let continuation: CheckedContinuation<Void, Error>
+    private let pipe: Pipe
+
+    init(continuation: CheckedContinuation<Void, Error>, pipe: Pipe) {
+        self.continuation = continuation
+        self.pipe = pipe
+    }
+
+    func finish(_ result: Result<Void, Error>) {
+        lock.lock()
+        if didFinish {
+            lock.unlock()
+            return
+        }
+        didFinish = true
+        lock.unlock()
+
+        switch result {
+        case .success:
+            _ = pipe.fileHandleForReading.readDataToEndOfFile()
+            continuation.resume()
+        case .failure(let error):
+            continuation.resume(throwing: error)
         }
     }
 }

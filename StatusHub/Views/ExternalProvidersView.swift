@@ -3,20 +3,33 @@ import AppKit
 
 struct ExternalProvidersView: View {
     @ObservedObject var store: ExternalProviderStore
+    let fixedTab: PluginTab?
     @State private var selectedTab: PluginTab = .installed
     @State private var pluginURL = ""
+    @State private var marketplaceSearch = ""
+
+    init(store: ExternalProviderStore, fixedTab: PluginTab? = nil) {
+        self.store = store
+        self.fixedTab = fixedTab
+    }
+
+    private var effectiveTab: PluginTab {
+        fixedTab ?? selectedTab
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $selectedTab) {
-                ForEach(PluginTab.allCases) { tab in
-                    Text(tab.title).tag(tab)
+            if fixedTab == nil {
+                Picker("", selection: $selectedTab) {
+                    ForEach(PluginTab.allCases) { tab in
+                        Text(tab.title).tag(tab)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                Divider()
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            Divider()
 
             if let error = store.errorMessage {
                 Text(error)
@@ -27,7 +40,7 @@ struct ExternalProvidersView: View {
                 Divider()
             }
 
-            switch selectedTab {
+            switch effectiveTab {
             case .installed:
                 installedView
             case .marketplace:
@@ -39,20 +52,36 @@ struct ExternalProvidersView: View {
     }
 
     private var marketplaceView: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(MarketplacePlugin.catalog) { plugin in
-                    MarketplacePluginRow(
-                        plugin: plugin,
-                        isInstalled: isInstalled(plugin),
-                        updateInfo: store.updateInfo(for: plugin.id),
-                        isInstalling: store.isInstalling,
-                        install: {
-                            Task { await store.installPlugin(from: plugin.repositoryURL) }
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("搜索 Provider", text: $marketplaceSearch)
+                    .textFieldStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            Divider()
+
+            if filteredMarketplacePlugins.isEmpty {
+                EmptySearchView()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredMarketplacePlugins) { plugin in
+                            MarketplacePluginRow(
+                                plugin: plugin,
+                                isInstalled: isInstalled(plugin),
+                                updateInfo: store.updateInfo(for: plugin.id),
+                                isInstalling: store.isInstalling,
+                                install: {
+                                    Task { await store.installPlugin(from: plugin.repositoryURL) }
+                                }
+                            )
+                            .padding(.horizontal, 12)
+                            Divider()
                         }
-                    )
-                    .padding(.horizontal, 12)
-                    Divider()
+                    }
                 }
             }
         }
@@ -69,14 +98,7 @@ struct ExternalProvidersView: View {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(store.providers) { provider in
-                            ExternalProviderRow(
-                                provider: provider,
-                                isPinned: store.isProviderPinned(provider.id),
-                                togglePinned: {
-                                    let isPinned = store.isProviderPinned(provider.id)
-                                    store.setProviderPinned(provider.id, pinned: !isPinned)
-                                }
-                            )
+                            ExternalProviderRow(provider: provider)
                                 .padding(.horizontal, 12)
                             Divider()
                         }
@@ -127,9 +149,19 @@ struct ExternalProvidersView: View {
             installed.id == plugin.id || installed.sourceURL == plugin.repositoryURL
         }
     }
+
+    private var filteredMarketplacePlugins: [MarketplacePlugin] {
+        let query = marketplaceSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return MarketplacePlugin.catalog }
+        return MarketplacePlugin.catalog.filter { plugin in
+            plugin.title.localizedCaseInsensitiveContains(query)
+                || plugin.subtitle.localizedCaseInsensitiveContains(query)
+                || plugin.id.localizedCaseInsensitiveContains(query)
+        }
+    }
 }
 
-private enum PluginTab: String, CaseIterable, Identifiable {
+enum PluginTab: String, CaseIterable, Identifiable {
     case installed
     case marketplace
     case github
@@ -235,10 +267,25 @@ private struct EmptyProvidersView: View {
     }
 }
 
+private struct EmptySearchView: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.title2)
+                .foregroundColor(.secondary)
+            Text("没有匹配的 Provider")
+                .font(.headline)
+            Text("换一个关键词再试。")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(20)
+    }
+}
+
 private struct ExternalProviderRow: View {
     let provider: ExternalProviderRuntime
-    let isPinned: Bool
-    let togglePinned: () -> Void
     @State private var isExpanded = false
 
     var body: some View {
@@ -260,12 +307,6 @@ private struct ExternalProviderRow: View {
                     .fontWeight(.medium)
                     .lineLimit(1)
                 Spacer()
-                Button(action: togglePinned) {
-                    Image(systemName: isPinned ? "pin.fill" : "pin")
-                        .foregroundColor(isPinned ? .accentColor : .secondary)
-                }
-                .buttonStyle(.plain)
-                .help(isPinned ? "取消一级展示" : "在主界面一级展示")
                 Text(provider.status.label)
                     .font(.caption)
                     .foregroundColor(provider.status.color)

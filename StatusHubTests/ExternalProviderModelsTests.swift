@@ -48,7 +48,23 @@ final class ExternalProviderModelsTests: XCTestCase {
               "value": "91 C",
               "detail": {
                 "source": "powermetrics"
-              }
+              },
+              "actions": [
+                {
+                  "id": "run",
+                  "title": "Run",
+                  "command": "bin/provider",
+                  "arguments": ["run"],
+                  "workingDirectory": "."
+                }
+              ],
+              "links": [
+                {
+                  "id": "latest",
+                  "title": "Latest report",
+                  "url": "https://example.com/report"
+                }
+              ]
             }
           ]
         }
@@ -64,6 +80,8 @@ final class ExternalProviderModelsTests: XCTestCase {
         XCTAssertEqual(snapshot.items.first?.status, .attention)
         XCTAssertEqual(snapshot.items.first?.value, "91 C")
         XCTAssertEqual(snapshot.items.first?.detail?["source"], "powermetrics")
+        XCTAssertEqual(snapshot.items.first?.actions?.first?.command, "bin/provider")
+        XCTAssertEqual(snapshot.items.first?.links?.first?.title, "Latest report")
     }
 
     func testHubStatusSeverityOrdering() {

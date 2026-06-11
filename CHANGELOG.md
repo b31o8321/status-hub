@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Add provider item actions so providers can expose manual trigger and toggle buttons.
+- Add provider item links for recent generated documents and other quick links.
+- Render only user-facing provider details in the main popover.
+
 ## 0.1.2
 
 - Move plugin management out of the main popover and into Settings.
