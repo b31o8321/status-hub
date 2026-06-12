@@ -1,0 +1,158 @@
+# Status Hub
+
+[中文](README.md)
+
+Status Hub is a macOS menu bar hub for built-in, local, and GitHub-installed status providers.
+
+Status Hub starts empty after installation. It does not ship with domain-specific providers enabled by default. Every status source is installed or registered as a provider plugin.
+
+The app is responsible for:
+
+- Enabling bundled general-purpose providers.
+- Installing or updating provider plugins from GitHub repositories.
+- Starting provider commands declared by plugin manifests.
+- Reading provider status JSON files.
+- Showing current jobs, history summaries, artifacts, notes, and quick links.
+
+## Install
+
+Download `StatusHub-<version>.dmg` from GitHub Actions artifacts or a tagged release, open it, and drag `StatusHub.app` to `Applications`.
+
+Status Hub is currently unsigned and not notarized. After copying the app, run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/StatusHub.app
+```
+
+If macOS reports a permission error:
+
+```bash
+sudo xattr -dr com.apple.quarantine /Applications/StatusHub.app
+```
+
+The DMG also includes `安装说明.md` with the same Gatekeeper unlock steps.
+
+## Provider Standard
+
+Provider implementation rules are documented in [docs/provider-standard.md](docs/provider-standard.md).
+
+## Architecture
+
+```text
+StatusHub
+  AppDelegate
+    HubStore
+      ExternalProviderStore
+        ~/Library/Application Support/StatusHub/providers/*.json
+        ~/Library/Application Support/StatusHub/plugins/*/statushub-plugin.json
+```
+
+## Version
+
+Current app version: `0.1.17` / build `18`.
+
+`0.1.2` keeps the app as the menu-bar shell, provider installer, provider process manager, and status renderer. Provider management lives in Settings so the main popover stays focused on live status.
+`0.1.3` adds provider-declared actions and links, allowing a provider to expose manual trigger buttons, schedule toggles, and recent generated documents without custom Hub code.
+`0.1.4` refines the hub UI with a compact translucent overview, first-level pages for pinned providers, collapsible provider settings, and a settings overview for install status, updates, and local directories.
+`0.1.7` preserves provider `runtime/` data such as local configuration while installing or updating GitHub plugins.
+`0.1.8` keeps long log paths out of job summaries and exposes them as a Finder shortcut instead.
+`0.1.9` moves provider item actions into compact icon buttons beside each item's status.
+`0.1.10` caps provider output links in compact menus and job cards so recent documents cannot stretch the status surface.
+`0.1.11` requires each provider to declare an icon and uses icon-only pinned provider navigation.
+`0.1.12` adds unsigned DMG packaging docs, provider standard docs, and plugin-relative image icons for providers.
+`0.1.13` adds provider-owned external configuration helpers, so complex settings such as GitLab project and branch selection can use a provider UI instead of JSON text fields.
+`0.1.14` makes GitHub plugin updates recover from dirty plugin worktrees while preserving provider `runtime/` data.
+`0.1.15` improves provider detail rendering with generic links, direct open buttons, and progress bars for running provider items.
+`0.1.16` adds bundled provider support so general-purpose marketplace providers can ship with Status Hub while custom providers stay GitHub-installed.
+`0.1.17` adds the bundled Local Services provider for local dev runtime checks.
+
+## UI
+
+The menu bar popover opens on **Overview** by default:
+
+- Overview: overall hub status and compact provider summaries.
+- Pinned providers: providers pinned in Settings or Overview appear beside Overview as first-level pages with detailed status and actions.
+
+The settings window is also hub-oriented:
+
+- Overview: installed provider count, install status, update status, and local provider directories with Finder shortcuts.
+- Installed: provider-owned configuration forms.
+- Marketplace: searchable marketplace.
+- GitHub: plugin installation from repository URLs.
+
+## Marketplace
+
+The marketplace only lists general-purpose providers. Some entries are bundled with Status Hub and can be enabled without a GitHub repository. Custom plugins such as team-specific GitLab monitors or Intelli automation providers should be installed through the GitHub tab instead of being fixed marketplace entries.
+
+Current marketplace providers:
+
+- Mac System: built-in CPU, memory, network, battery, disk, and temperature status.
+- Local Services: built-in local ports, HTTP endpoints, processes, and development runtime status.
+
+## GitHub Plugin Installation
+
+Open Status Hub Settings, switch to **Plugins > GitHub**, paste a GitHub URL, and click install. The app clones or pulls the repository under:
+
+```text
+~/Library/Application Support/StatusHub/plugins/
+```
+
+Each plugin repository must provide this file at its root. See [docs/provider-standard.md](docs/provider-standard.md) for the complete schema.
+
+```text
+statushub-plugin.json
+```
+
+Plugin manifest example:
+
+```json
+{
+  "id": "example-status-provider",
+  "title": "Example Status Provider",
+  "version": "0.1.0",
+  "providers": [
+    {
+      "id": "main",
+      "title": "Example Provider",
+      "icon": "square.stack.3d.up",
+      "statusFile": "runtime/status.json",
+      "command": "bin/example-provider",
+      "arguments": [],
+      "workingDirectory": "."
+    }
+  ]
+}
+```
+
+`providers[].icon` is required. It may be a valid SF Symbol name or a plugin-relative image path such as `assets/gitlab-icon.svg`.
+
+If `command` is present, Status Hub starts that command and passes:
+
+- `STATUS_HUB_PROVIDER_ID`
+- `STATUS_HUB_STATUS_FILE`
+- `STATUS_HUB_CONFIG_FILE`
+- `STATUS_HUB_DATA_DIR`
+
+The provider command should keep running and write the status file atomically. Status Hub does not load plugin code into the app process; plugins communicate by status files.
+
+External provider registration and status file details are covered in [docs/provider-standard.md](docs/provider-standard.md).
+
+## Build
+
+Generate the Xcode project:
+
+```bash
+xcodegen generate
+```
+
+Build:
+
+```bash
+xcodebuild -project StatusHub.xcodeproj -scheme StatusHub -destination 'platform=macOS' build
+```
+
+Run tests:
+
+```bash
+xcodebuild test -project StatusHub.xcodeproj -scheme StatusHub -destination 'platform=macOS'
+```
